@@ -1,0 +1,298 @@
+name: Build and Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Decode Keystore
+        run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > androidApp/release.jks
+
+      - name: Build Android
+        env:
+          SIGNING_KEY: release.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: |
+          ./gradlew :androidApp:assembleRelease
+          cp androidApp/build/outputs/apk/release/androidApp-release.apk UBAA-Android-v${{ steps.get_version.outputs.VERSION }}.apk
+
+      - name: Upload Android Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Android-v${{ steps.get_version.outputs.VERSION }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-desktop-linux:
+    name: Build Desktop Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+      - name: Build Deb
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:packageReleaseDeb
+
+      - name: Prepare Linux Assets
+        run: |
+          DEB_PATH=$(ls composeApp/build/compose/binaries/main-release/deb/*.deb | head -n 1)
+          cp "$DEB_PATH" "UBAA-Linux-v${{ steps.get_version.outputs.VERSION }}.deb"
+
+      - name: Upload Deb Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Linux-v${{ steps.get_version.outputs.VERSION }}.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-server:
+    name: Build Server JAR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+      - name: Build Server
+        run: |
+          ./gradlew :server:buildFatJar
+          cp server/build/libs/*-all.jar UBAA-Server-v${{ steps.get_version.outputs.VERSION }}.jar
+      - name: Upload Server Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Server-v${{ steps.get_version.outputs.VERSION }}.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-web-wasm:
+    name: Build Web Wasm
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+      - name: Build Web Wasm
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:wasmJsBrowserDistribution
+      - name: Archive Web Wasm
+        run: |
+          cd composeApp/build/dist/wasmJs/productionExecutable
+          zip -r "$GITHUB_WORKSPACE/UBAA-Web-Wasm-v${{ steps.get_version.outputs.VERSION }}.zip" .
+      - name: Upload Web Wasm Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Web-Wasm-v${{ steps.get_version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate Cloudflare deployment secrets
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_ZONE_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required"
+              exit 1
+            fi
+          done
+      - name: Deploy Web Wasm to CF Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy "composeApp/build/dist/wasmJs/productionExecutable" --project-name=ubaa --branch=main
+      - name: Purge app.buaa.team cache
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status_code="$(curl -sS -o "$response_file" -w "%{http_code}" \
+            -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"hosts":["app.buaa.team"]}')"
+          python - "$response_file" "$status_code" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          status_code = int(sys.argv[2])
+          text = path.read_text(encoding="utf-8")
+          try:
+            payload = json.loads(text)
+          except json.JSONDecodeError as exc:
+            print(f"::error::Failed to parse Cloudflare response as JSON: {exc}")
+            print(text)
+            raise SystemExit(1)
+
+          if status_code >= 400 or not payload.get("success"):
+            print(f"::error::Cloudflare purge failed with HTTP {status_code}")
+            print(text)
+            raise SystemExit(1)
+
+          request_id = payload.get("result", {}).get("id", "unknown")
+          print(f"Cloudflare cache purge succeeded for app.buaa.team (request id: {request_id})")
+          PY
+
+  build-web-js:
+    name: Build Web JS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+      - name: Build Web JS
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:jsBrowserDistribution
+      - name: Archive Web JS
+        run: |
+          cd composeApp/build/dist/js/productionExecutable
+          zip -r "$GITHUB_WORKSPACE/UBAA-Web-JS-v${{ steps.get_version.outputs.VERSION }}.zip" .
+      - name: Upload Web JS Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Web-JS-v${{ steps.get_version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Get Version
+        id: get_version
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Build iOS Framework
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:linkReleaseFrameworkIosArm64
+
+      # 如果需要上传 iOS 框架（通常是给 Xcode 使用的 .framework）
+      - name: Archive iOS Framework
+        run: |
+          zip -r UBAA-iOS-Framework-v${{ steps.get_version.outputs.VERSION }}.zip composeApp/build/bin/iosArm64/releaseFramework
+
+      - name: Upload iOS Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-iOS-Framework-v${{ steps.get_version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Build Windows Exe
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:packageReleaseExe
+
+      - name: Prepare Windows Assets
+        shell: bash
+        run: |
+          # 寻找生成的 exe 并重命名
+          EXE_PATH=$(ls composeApp/build/compose/binaries/main-release/exe/*.exe | head -n 1)
+          cp "$EXE_PATH" "UBAA-Windows-v${{ steps.get_version.outputs.VERSION }}.exe"
+
+      - name: Upload Windows Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: UBAA-Windows-v${{ steps.get_version.outputs.VERSION }}.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

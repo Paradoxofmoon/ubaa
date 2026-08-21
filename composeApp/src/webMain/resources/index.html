@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UBAA</title>
+    <link rel="icon" href="./favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" href="./favicon-32.png" sizes="32x32">
+    <link rel="icon" type="image/png" href="./favicon-16.png" sizes="16x16">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#1976d2">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+    <link type="text/css" rel="stylesheet" href="./styles.css">
+    <script>
+        (() => {
+            const loadApp = () => {
+                if (document.querySelector('script[data-ubaa-app="true"]')) {
+                    return;
+                }
+                const script = document.createElement('script');
+                script.type = 'application/javascript';
+                script.src = './composeApp.js';
+                script.dataset.ubaaApp = 'true';
+                document.head.appendChild(script);
+            };
+
+            const registerServiceWorker = async () => {
+                if (!('serviceWorker' in navigator)) {
+                    return;
+                }
+                try {
+                    await navigator.serviceWorker.register('./sw.js', { scope: './' });
+                } catch (error) {
+                    console.warn('[UBAA] Failed to register service worker.', error);
+                }
+            };
+
+            window.addEventListener('load', async () => {
+                await registerServiceWorker();
+                loadApp();
+            });
+        })();
+    </script>
+</head>
+
+<body>
+    <div id="app-loader">
+        <div class="spinner"></div>
+        <div class="loading-text">UBAA Loading...</div>
+    </div>
+</body>
+
+</html>

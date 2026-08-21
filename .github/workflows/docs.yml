@@ -1,0 +1,121 @@
+name: Build and Deploy Docs
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-docs:
+    name: Build and Deploy Docs
+    runs-on: ubuntu-latest
+    env:
+      DOCS_SSH_HOST: ${{ secrets.DOCS_SSH_HOST }}
+      DOCS_SSH_USER: ${{ secrets.DOCS_SSH_USER }}
+      DOCS_SSH_KEY: ${{ secrets.DOCS_SSH_KEY }}
+      DOCS_SSH_PORT: ${{ secrets.DOCS_SSH_PORT }}
+      DOCS_DEPLOY_PATH: ${{ secrets.DOCS_DEPLOY_PATH }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install docs dependencies
+        run: npm ci
+
+      - name: Build docs
+        run: npm run docs:build
+
+      - name: Validate deployment secrets
+        run: |
+          set -euo pipefail
+          for name in DOCS_SSH_HOST DOCS_SSH_USER DOCS_SSH_KEY DOCS_SSH_PORT DOCS_DEPLOY_PATH; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required"
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DOCS_SSH_KEY" | perl -pe 's/\\n/\n/g; s/\r//g' > ~/.ssh/id_docs
+          chmod 600 ~/.ssh/id_docs
+          if ! ssh-keygen -y -f ~/.ssh/id_docs > /dev/null; then
+            echo "::error::DOCS_SSH_KEY is not a readable private key. Paste the full private key, not the .pub public key; preserve BEGIN/END lines; use an unencrypted deploy key."
+            exit 1
+          fi
+          ssh-keyscan -p "$DOCS_SSH_PORT" -H "$DOCS_SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Create remote docs directory
+        run: |
+          set -euo pipefail
+          remote_path="${DOCS_DEPLOY_PATH%/}"
+          ssh -i ~/.ssh/id_docs -o IdentitiesOnly=yes -p "$DOCS_SSH_PORT" \
+            "$DOCS_SSH_USER@$DOCS_SSH_HOST" \
+            "mkdir -p -- '$remote_path'"
+
+      - name: Deploy docs with rsync
+        run: |
+          set -euo pipefail
+          remote_path="${DOCS_DEPLOY_PATH%/}"
+          rsync -az --delete \
+            --exclude='.user.ini' \
+            -e "ssh -i ~/.ssh/id_docs -o IdentitiesOnly=yes -p $DOCS_SSH_PORT" \
+            docs/.vitepress/dist/ \
+            "$DOCS_SSH_USER@$DOCS_SSH_HOST:$remote_path/"
+      - name: Validate Cloudflare purge secrets
+        run: |
+          set -euo pipefail
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ZONE_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required"
+              exit 1
+            fi
+          done
+      - name: Purge www.buaa.team cache
+        run: |
+          set -euo pipefail
+          response_file="$(mktemp)"
+          status_code="$(curl -sS -o "$response_file" -w "%{http_code}" \
+            -X POST "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"hosts":["www.buaa.team"]}')"
+          python - "$response_file" "$status_code" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          path = pathlib.Path(sys.argv[1])
+          status_code = int(sys.argv[2])
+          text = path.read_text(encoding="utf-8")
+          try:
+            payload = json.loads(text)
+          except json.JSONDecodeError as exc:
+            print(f"::error::Failed to parse Cloudflare response as JSON: {exc}")
+            print(text)
+            raise SystemExit(1)
+
+          if status_code >= 400 or not payload.get("success"):
+            print(f"::error::Cloudflare purge failed with HTTP {status_code}")
+            print(text)
+            raise SystemExit(1)
+
+          request_id = payload.get("result", {}).get("id", "unknown")
+          print(f"Cloudflare cache purge succeeded for www.buaa.team (request id: {request_id})")
+          PY

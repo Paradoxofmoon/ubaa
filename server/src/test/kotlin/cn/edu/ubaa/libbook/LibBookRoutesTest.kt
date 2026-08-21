@@ -1,0 +1,23 @@
+package cn.edu.ubaa.libbook
+
+import cn.edu.ubaa.module
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.testing.testApplication
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class LibBookRoutesTest {
+  @Test
+  fun `GET libbook libraries without token returns unauthorized`() = testApplication {
+    application { module() }
+
+    val response = client.get("/api/v1/libbook/libraries?day=2026-05-08")
+
+    assertEquals(HttpStatusCode.Unauthorized, response.status)
+    assertTrue(response.bodyAsText().contains("invalid_token"))
+    assertTrue(response.bodyAsText().contains("登录状态已失效，请重新登录"))
+  }
+}

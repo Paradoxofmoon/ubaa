@@ -1,0 +1,209 @@
+package cn.edu.ubaa.ui.screens.menu
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.NetworkWifi
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.EventSeat
+import androidx.compose.material.icons.filled.Grade
+import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.Paid
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+
+data class FeatureItem(
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: ImageVector,
+)
+
+@Composable
+fun RegularFeaturesScreen(
+    onScheduleClick: () -> Unit,
+    onExamClick: () -> Unit,
+    onGradeClick: () -> Unit,
+    onBykcClick: () -> Unit,
+    onClassroomClick: () -> Unit,
+    onSpocClick: () -> Unit,
+    onJudgeClick: () -> Unit,
+    onLibBookClick: () -> Unit,
+    onCardClick: () -> Unit,
+    onNetworkClick: () -> Unit,
+    onZfwClick: () -> Unit,
+    onElectricityClick: () -> Unit,
+    gridState: LazyGridState,
+    modifier: Modifier = Modifier,
+) {
+  val features =
+      listOf(
+          FeatureItem(
+              id = "schedule",
+              title = "课表查询",
+              description = "查看课程表，支持周视图和学期切换",
+              icon = Icons.Default.CalendarToday,
+          ),
+          FeatureItem(
+              id = "exam",
+              title = "考试查询",
+              description = "查看考试安排，支持学期切换",
+              icon = Icons.AutoMirrored.Filled.Assignment,
+          ),
+          FeatureItem(
+              id = "grade",
+              title = "成绩查询",
+              description = "查看课程成绩、学分和绩点",
+              icon = Icons.Default.Grade,
+          ),
+          FeatureItem(
+              id = "bykc",
+              title = "博雅课程",
+              description = "浏览选课，查看已选，签到签退",
+              icon = Icons.Default.School,
+          ),
+          FeatureItem(
+              id = "classroom",
+              title = "空教室查询",
+              description = "查询各校区空闲教室",
+              icon = Icons.Default.MeetingRoom,
+          ),
+          FeatureItem(
+              id = "spoc",
+              title = "SPOC作业",
+              description = "查看当前学期作业与提交状态",
+              icon = Icons.Default.AssignmentTurnedIn,
+          ),
+          FeatureItem(
+              id = "judge",
+              title = "希冀作业",
+              description = "聚合希冀平台作业与提交进度",
+              icon = Icons.Default.Code,
+          ),
+          FeatureItem(
+              id = "libbook",
+              title = "图书馆座位",
+              description = "预约图书馆座位并管理记录",
+              icon = Icons.Default.EventSeat,
+          ),
+          FeatureItem(
+              id = "card",
+              title = "校园卡",
+              description = "查询校园卡余额",
+              icon = Icons.Default.AccountBalanceWallet,
+          ),
+           FeatureItem(
+               id = "network",
+               title = "校园网",
+               description = "查询免费、赠送与计费流量",
+               icon = Icons.Default.NetworkWifi,
+           ),
+           FeatureItem(
+               id = "zfw",
+               title = "校园网充值",
+               description = "登录自助服务门户完成缴费充值",
+               icon = Icons.Default.Paid,
+           ),
+           FeatureItem(
+               id = "electricity",
+               title = "电费充值",
+               description = "北航电费在线充值缴费",
+               icon = Icons.Default.Bolt,
+           ),
+       )
+
+  Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    // Text(
+    //         text = "普通功能",
+    //         style = MaterialTheme.typography.headlineMedium,
+    //         fontWeight = FontWeight.Bold,
+    //         modifier = Modifier.padding(bottom = 16.dp)
+    // )
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        state = gridState,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      items(features) { feature ->
+        FeatureCard(
+            feature = feature,
+            onClick = {
+              when (feature.id) {
+                "schedule" -> onScheduleClick()
+                "exam" -> onExamClick()
+                "grade" -> onGradeClick()
+                "bykc" -> onBykcClick()
+                "classroom" -> onClassroomClick()
+                "spoc" -> onSpocClick()
+                "judge" -> onJudgeClick()
+                "libbook" -> onLibBookClick()
+                "card" -> onCardClick()
+                "network" -> onNetworkClick()
+                "zfw" -> onZfwClick()
+                "electricity" -> onElectricityClick()
+              }
+            },
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  Card(
+      modifier = modifier.fillMaxWidth().heightIn(min = 160.dp).clickable { onClick() },
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+      elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+  ) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+      Icon(
+          imageVector = feature.icon,
+          contentDescription = null,
+          modifier = Modifier.size(48.dp),
+          tint = MaterialTheme.colorScheme.primary,
+      )
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      Text(
+          text = feature.title,
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.Bold,
+          textAlign = TextAlign.Center,
+      )
+
+      Spacer(modifier = Modifier.height(4.dp))
+
+      Text(
+          text = feature.description,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          textAlign = TextAlign.Center,
+          lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+      )
+    }
+  }
+}

@@ -1,0 +1,90 @@
+package cn.edu.ubaa
+
+import cn.edu.ubaa.api.auth.AppUpdateStatus
+import cn.edu.ubaa.api.auth.AppVersionCheckResponse
+import cn.edu.ubaa.version.AppVersionRuntimeConfig
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.server.testing.*
+import kotlin.test.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+class ApplicationTest {
+  private val json = Json { ignoreUnknownKeys = true }
+
+  @Test
+  fun testRoot() = testApplication {
+    application { module() }
+    val response = client.get("/")
+    assertEquals(HttpStatusCode.OK, response.status)
+    assertEquals("Ktor: ${Greeting().greet()}", response.bodyAsText())
+  }
+
+  @Test
+  fun requestIdHeaderIsEchoedBack() = testApplication {
+    application { module() }
+
+    val response = client.get("/") { header(HttpHeaders.XRequestId, "req-test-123") }
+
+    assertEquals(HttpStatusCode.OK, response.status)
+    assertEquals("req-test-123", response.headers[HttpHeaders.XRequestId])
+  }
+
+  @Test
+  fun userInfoWithoutTokenReturnsUnauthorized() = testApplication {
+    application { module() }
+
+    val response = client.get("/api/v1/user/info")
+
+    assertEquals(HttpStatusCode.Unauthorized, response.status)
+    assertTrue(response.bodyAsText().contains("invalid_token"))
+    assertTrue(response.bodyAsText().contains("登录状态已失效，请重新登录"))
+  }
+
+  @Test
+  fun versionEndpointReturnsAlignedResponseForMatchingVersion() = testApplication {
+    application { module() }
+
+    val latestVersion = AppVersionRuntimeConfig.load().latestVersion
+    val response = client.get("/api/v1/app/version") { parameter("clientVersion", latestVersion) }
+    val payload = json.decodeFromString<AppVersionCheckResponse>(response.bodyAsText())
+
+    assertEquals(HttpStatusCode.OK, response.status)
+    assertFalse(payload.updateAvailable)
+    assertEquals(AppUpdateStatus.UP_TO_DATE, payload.status)
+    assertEquals(latestVersion, payload.latestVersion)
+  }
+
+  @Test
+  fun versionEndpointRemainsCompatibleWithLegacyClients() = testApplication {
+    application { module() }
+
+    val latestVersion = AppVersionRuntimeConfig.load().latestVersion
+    val response = client.get("/api/v1/app/version") { parameter("clientVersion", "0.0.0") }
+    val payload = json.decodeFromString<LegacyAppVersionCheckResponse>(response.bodyAsText())
+
+    assertEquals(HttpStatusCode.OK, response.status)
+    assertEquals(latestVersion, payload.serverVersion)
+    assertFalse(payload.aligned)
+    assertTrue(payload.downloadUrl.isNotBlank())
+  }
+
+  @Test
+  fun announcementEndpointIsAnonymous() = testApplication {
+    application { module() }
+
+    val response = client.get("/api/v1/app/announcement")
+
+    assertTrue(response.status == HttpStatusCode.OK || response.status == HttpStatusCode.NoContent)
+  }
+
+  @Serializable
+  private data class LegacyAppVersionCheckResponse(
+      val serverVersion: String,
+      val aligned: Boolean,
+      val downloadUrl: String,
+      val releaseNotes: String? = null,
+  )
+}

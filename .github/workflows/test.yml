@@ -1,0 +1,143 @@
+name: Test Compilation
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+env:
+  UPDATE_DOWNLOAD_URL: https://github.com/BUAASubnet/UBAA/releases
+
+jobs:
+  test-android:
+    name: Test Android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Android
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :androidApp:assembleDebug
+
+  test-desktop-linux:
+    name: Test Desktop Linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Desktop
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: |
+          ./gradlew :shared:compileKotlinMetadata
+          ./gradlew :composeApp:compileKotlinJvm
+
+  test-server:
+    name: Test Server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Server
+        env:
+          SERVER_BIND_HOST: ${{ secrets.SERVER_BIND_HOST || '0.0.0.0' }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          USE_VPN: ${{ secrets.USE_VPN || 'false' }}
+        run: ./gradlew :server:compileKotlin
+
+  test-web-wasm:
+    name: Test Web Wasm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Web Wasm
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:compileKotlinWasmJs
+
+  test-web-js:
+    name: Test Web JS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Web JS
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:compileKotlinJs
+
+  test-ios:
+    name: Test iOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile iOS
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:compileKotlinIosArm64
+
+  test-windows:
+    name: Test Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile Windows
+        env:
+          API_ENDPOINT: ${{ secrets.API_ENDPOINT }}
+        run: ./gradlew :composeApp:compileKotlinJvm

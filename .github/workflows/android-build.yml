@@ -1,0 +1,67 @@
+# UBAA Android APK 构建
+# 独立仓库版：项目在仓库根目录，无需 build-root-directory / ubaa/ 前缀。
+# - 始终构建 Debug APK（未签名，可 chrome://inspect 调 WebView）
+# - 仅当配置了 SIGNING_KEY secret 时才构建并上传签名 Release APK
+name: Build UBAA Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+      SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+      SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Recreate signing keystore from secret (if configured)
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.SIGNING_KEY }}" ]; then
+            echo "::notice::SIGNING_KEY secret 未配置，跳过 Release 签名构建，仅产出 Debug APK。"
+            echo "SKIP_RELEASE=true" >> "$GITHUB_ENV"
+          else
+            mkdir -p keystore
+            echo "${{ secrets.SIGNING_KEY }}" | tr -d '\n' | base64 -d > keystore/release.p12
+            echo "SIGNING_KEY=$GITHUB_WORKSPACE/keystore/release.p12" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Debug APK
+        run: ./gradlew :androidApp:assembleDebug --stacktrace --no-daemon
+
+      - name: Build Release APK (signed)
+        if: env.SKIP_RELEASE != 'true'
+        run: ./gradlew :androidApp:assembleRelease --stacktrace --no-daemon
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubaa-debug
+          path: androidApp/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      - name: Upload Release APK
+        if: env.SKIP_RELEASE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubaa-release
+          path: androidApp/build/outputs/apk/release/*.apk
+          retention-days: 14
