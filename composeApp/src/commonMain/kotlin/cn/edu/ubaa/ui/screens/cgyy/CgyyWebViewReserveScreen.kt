@@ -79,6 +79,33 @@ private val cgyyDiagnosticsJs =
         .trimIndent()
 
 /**
+ * 高度修复脚本：WebView 环境下 `100vh` 与根元素 `height:100%` 解析为 0（初始包含块高度为 0），
+ * 导致 `html/body → .fullHeight → #mobilePage` 高度链塌陷、滚动容器只剩 padding 高、
+ * 页面内容被裁切（只显示顶部一条）。注入显式像素高度恢复，等价于真浏览器给 html 的视口高度。
+ */
+private val cgyyHeightFixJs =
+    """
+    (function(){
+      function fix(){
+        try {
+          var h = window.innerHeight;
+          document.documentElement.style.height = h + 'px';
+          document.body.style.height = h + 'px';
+        } catch(e) {}
+      }
+      fix();
+      window.addEventListener('resize', fix);
+      // SPA 若在加载过程中重置样式，前 2 秒内兜底补几次
+      var n = 0;
+      var timer = setInterval(function(){
+        fix();
+        if (++n >= 5) clearInterval(timer);
+      }, 400);
+    })();
+    """
+        .trimIndent()
+
+/**
  * 体育场馆网页预约屏（方案 A1）。
  *
  * 先静默触发一次运动场(cgyy venue-server)登录，把 `sso_buaa_token` + cgyy 会话 cookie 种进 LocalCookieStore；再渲染
@@ -170,7 +197,7 @@ fun CgyyWebViewReserveScreen(
                 userAgentOverride = mobileChromeUserAgent,
                 enableMobileViewport = false,
                 onPageError = { webError = it },
-                injectJsOnLoad = cgyyDiagnosticsJs,
+                injectJsOnLoad = cgyyDiagnosticsJs + "\n" + cgyyHeightFixJs,
             )
           }
         }
