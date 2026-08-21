@@ -398,7 +398,7 @@ private fun PayPanel(
 
         if (uiState.computedPower != null && uiState.computedMoney != null) {
           Text(
-              "下发电量 ${uiState.computedPower} 度 · 支付金额 ¥${"%.2f".format(uiState.computedMoney)}",
+              "下发电量 ${uiState.computedPower} 度 · 支付金额 ¥${formatMoney(uiState.computedMoney)}",
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.primary,
           )
@@ -496,4 +496,10 @@ private fun PayWaySelector(
       }
     }
   }
+}
+
+/** 跨平台金额格式化：固定两位小数（iOS/JS 无 java.lang.String.format，不能用 "%.2f".format）。 */
+private fun formatMoney(value: Double): String {
+  val cents = kotlin.math.round(value * 100).toLong()
+  return "${cents / 100}.${(cents % 100).toString().padStart(2, '0')}"
 }
