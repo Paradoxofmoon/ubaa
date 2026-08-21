@@ -1,9 +1,7 @@
 package cn.edu.ubaa.ui.screens.cgyy
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,53 +32,9 @@ private const val mobileChromeUserAgent =
     "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
 
 /**
- * 页面加载后注入的「页面内部状态报告」脚本。
- *
- * 周期性通过 console.error('PAYDEBUG ...') 上报页面关键状态（挂载点、document.title、 body 文本长度、appMethod 等），App 侧
- * onConsoleMessage 捕获 PAYDEBUG 后显示在诊断横幅， 用于定位 WebView 内页面渲染到哪一步（尤其是「只闪标题就空白」的场景）。
- */
-private val cgyyDiagnosticsJs =
-    """
-    (function(){
-      function report(tag, data){
-        try { console.error('PAYDEBUG ' + tag + ' ' + JSON.stringify(data)); } catch(e) {}
-      }
-      var checks = 0;
-      var timer = setInterval(function(){
-        checks++;
-        try {
-          var chingo = document.getElementById('chingo');
-          var nav = document.querySelector('.cgNavigation');
-          var body = document.body;
-          report('st', {
-            t: document.title,
-            rs: document.readyState,
-            ch: chingo ? chingo.children.length : 'absent',
-            bl: body ? body.innerText.length : -1,
-            bs: body ? (body.innerText || '').slice(0, 50) : '',
-            nav: nav ? (nav.innerText || '').slice(0, 30) : 'no-nav',
-            am: typeof window.appMethod,
-            ap: typeof window.app
-          });
-        } catch(e) {
-          report('err', String(e));
-        }
-        if (checks >= 6) clearInterval(timer);
-      }, 1000);
-      // 捕获未处理的 JS 异常
-      window.addEventListener('error', function(e){
-        report('jserr', String(e.message) + ' @' + e.filename + ':' + e.lineno);
-      });
-      window.addEventListener('unhandledrejection', function(e){
-        report('rej', String(e.reason && e.reason.message || e.reason));
-      });
-    })();
-    """
-        .trimIndent()
-
-/**
- * 高度修复脚本：WebView 环境下 `100vh` 与根元素 `height:100%` 解析为 0（初始包含块高度为 0）， 导致 `html/body → .fullHeight
- * → #mobilePage` 高度链塌陷、滚动容器只剩 padding 高、 页面内容被裁切（只显示顶部一条）。注入显式像素高度恢复，等价于真浏览器给 html 的视口高度。
+ * 高度修复脚本：WebView 环境下 `100vh` 与根元素 `height:100%` 解析为 0（初始包含块高度为 0），
+ * 导致 `html/body → .fullHeight → #mobilePage` 高度链塌陷、滚动容器只剩 padding 高、
+ * 页面内容被裁切（只显示顶部一条）。注入显式像素高度恢复，等价于真浏览器给 html 的视口高度。
  */
 private val cgyyHeightFixJs =
     """
@@ -121,7 +75,6 @@ fun CgyyWebViewReserveScreen(
   val reserveUrl = "https://cgyy.buaa.edu.cn/venue/mobileReservation"
   var preparing by remember { mutableStateOf(true) }
   var error by remember { mutableStateOf<String?>(null) }
-  var webError by remember { mutableStateOf<String?>(null) }
 
   // 先确保 cgyy 体育会话建立（登录会种 sso_buaa_token 等 cookie），再注入 WebView。
   var ssoCookies by remember { mutableStateOf(buildBuaaEduCnDomainCookies()) }
@@ -171,34 +124,16 @@ fun CgyyWebViewReserveScreen(
           }
         }
         else -> {
-          Column(modifier = Modifier.fillMaxSize()) {
-            // 诊断横幅：显示 WebView 内 JS/加载错误，帮助定位白屏
-            webError?.let { e ->
-              androidx.compose.material3.Surface(
-                  color = MaterialTheme.colorScheme.errorContainer,
-                  modifier = Modifier.fillMaxWidth(),
-              ) {
-                Text(
-                    "⚠ $e",
-                    modifier = Modifier.padding(8.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-              }
-            }
-            InAppWebView(
-                url = reserveUrl,
-                modifier = Modifier.weight(1f),
-                domainCookies = ssoCookies,
-                // cgyy 移动版 SPA 需移动 Chrome UA；但绝不能开 useWideViewPort —— 该 SPA 按
-                // width=device-width + rem 自适应，宽视口会让 clientWidth 变成 ~980，rem 基准算错、
-                // 元素布局全乱、只显示一部分。参见 README「待解决」。
-                userAgentOverride = mobileChromeUserAgent,
-                enableMobileViewport = false,
-                onPageError = { webError = it },
-                injectJsOnLoad = cgyyDiagnosticsJs + "\n" + cgyyHeightFixJs,
-            )
-          }
+          InAppWebView(
+              url = reserveUrl,
+              modifier = Modifier.fillMaxSize(),
+              domainCookies = ssoCookies,
+              // cgyy 移动版 SPA：移动 Chrome UA 走移动端渲染；必须关 useWideViewPort（否则
+              // clientWidth≈980、rem 基准错乱），并注入像素高度修复 WebView 的 vh 解析为 0 问题。
+              userAgentOverride = mobileChromeUserAgent,
+              enableMobileViewport = false,
+              injectJsOnLoad = cgyyHeightFixJs,
+          )
         }
       }
     }
