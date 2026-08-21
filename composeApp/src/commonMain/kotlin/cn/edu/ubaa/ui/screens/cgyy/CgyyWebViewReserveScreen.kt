@@ -164,9 +164,11 @@ fun CgyyWebViewReserveScreen(
                 url = reserveUrl,
                 modifier = Modifier.weight(1f),
                 domainCookies = ssoCookies,
-                // cgyy 移动版 SPA 需移动 Chrome UA + viewport 适配才能正常渲染（否则空白）
+                // cgyy 移动版 SPA 需移动 Chrome UA；但绝不能开 useWideViewPort —— 该 SPA 按
+                // width=device-width + rem 自适应，宽视口会让 clientWidth 变成 ~980，rem 基准算错、
+                // 元素布局全乱、只显示一部分。参见 README「待解决」。
                 userAgentOverride = mobileChromeUserAgent,
-                enableMobileViewport = true,
+                enableMobileViewport = false,
                 onPageError = { webError = it },
                 injectJsOnLoad = cgyyDiagnosticsJs,
             )
