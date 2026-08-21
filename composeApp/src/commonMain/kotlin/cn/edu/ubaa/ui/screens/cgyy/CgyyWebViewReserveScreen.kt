@@ -32,9 +32,8 @@ private const val mobileChromeUserAgent =
     "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
 
 /**
- * 高度修复脚本：WebView 环境下 `100vh` 与根元素 `height:100%` 解析为 0（初始包含块高度为 0），
- * 导致 `html/body → .fullHeight → #mobilePage` 高度链塌陷、滚动容器只剩 padding 高、
- * 页面内容被裁切（只显示顶部一条）。注入显式像素高度恢复，等价于真浏览器给 html 的视口高度。
+ * 高度修复脚本：WebView 环境下 `100vh` 与根元素 `height:100%` 解析为 0（初始包含块高度为 0）， 导致 `html/body → .fullHeight
+ * → #mobilePage` 高度链塌陷、滚动容器只剩 padding 高、 页面内容被裁切（只显示顶部一条）。注入显式像素高度恢复，等价于真浏览器给 html 的视口高度。
  */
 private val cgyyHeightFixJs =
     """
