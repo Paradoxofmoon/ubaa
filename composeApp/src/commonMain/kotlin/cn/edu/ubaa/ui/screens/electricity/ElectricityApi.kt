@@ -10,7 +10,6 @@ import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -21,7 +20,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /** shsd.buaa.edu.cn 电费购电后端。直连 HTTP，不依赖 shared 抽象层。 */
-
 private const val BASE_URL = "https://shsd.buaa.edu.cn"
 
 // ===== DTO =====
@@ -68,6 +66,7 @@ data class ElectricityMeterInfo(
 /** 支付下单结果。 */
 sealed class ElectricityPayResult {
   data class Success(val payUrl: String) : ElectricityPayResult()
+
   data class Failure(val message: String) : ElectricityPayResult()
 }
 
@@ -78,7 +77,10 @@ class ElectricityException(message: String) : Exception(message)
 
 /** 电费购电 HTTP 后端。shsd 无需登录态，普通 GET/POST 即可。 */
 class ElectricityApi(private val engine: HttpClientEngine? = null) {
-  private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+  private val json = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+  }
 
   private val client: HttpClient =
       HttpClient(engine ?: platformEngine()) {
@@ -105,7 +107,9 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
     return try {
       json.decodeFromString<List<ElectricityMeter>>(body)
     } catch (e: Exception) {
-      throw ElectricityException("用电查询数据解析失败: ${e.message ?: e::class.simpleName}. 前200字节=${body.take(200)}")
+      throw ElectricityException(
+          "用电查询数据解析失败: ${e.message ?: e::class.simpleName}. 前200字节=${body.take(200)}"
+      )
     }
   }
 
@@ -117,13 +121,17 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
           header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
         }
     if (response.status != HttpStatusCode.OK) {
-      throw ElectricityException("查询电表失败（${response.status.value}）：${response.bodyAsText().take(80)}")
+      throw ElectricityException(
+          "查询电表失败（${response.status.value}）：${response.bodyAsText().take(80)}"
+      )
     }
     val body = response.bodyAsText()
     return try {
       json.decodeFromString<ElectricityMeterInfo>(body)
     } catch (e: Exception) {
-      throw ElectricityException("查询电表返回格式异常: ${e.message ?: e::class.simpleName}. 原始=${body.take(300)}")
+      throw ElectricityException(
+          "查询电表返回格式异常: ${e.message ?: e::class.simpleName}. 原始=${body.take(300)}"
+      )
     }
   }
 
@@ -146,7 +154,9 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
           header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
         }
     if (response.status != HttpStatusCode.OK) {
-      return ElectricityPayResult.Failure("下单失败（${response.status.value}）：${response.bodyAsText().take(80)}")
+      return ElectricityPayResult.Failure(
+          "下单失败（${response.status.value}）：${response.bodyAsText().take(80)}"
+      )
     }
     val payUrl = response.bodyAsText().trim().trim('"', '\'')
     return if (payUrl.startsWith("http://") || payUrl.startsWith("https://")) {

@@ -195,7 +195,8 @@ fun CgyyReservePickerScreen(
               CgyyLoadingState("正在刷新可预约时段...", modifier = Modifier.fillMaxSize())
           uiState.dayInfoError != null ->
               CgyyErrorState(uiState.dayInfoError, onRetry = viewModel::refreshReserveData)
-          uiState.selectedSiteId == null -> CgyyEmptyState("请选择楼栋/层", "先从上方横向列表中选择一个${viewModel.venueLabel}位置。")
+          uiState.selectedSiteId == null ->
+              CgyyEmptyState("请选择楼栋/层", "先从上方横向列表中选择一个${viewModel.venueLabel}位置。")
           visibleSpaces.isEmpty() -> CgyyEmptyState("暂无可预约教室", "当前楼栋或搜索条件下没有匹配教室。")
           else ->
               CgyyReservationTable(

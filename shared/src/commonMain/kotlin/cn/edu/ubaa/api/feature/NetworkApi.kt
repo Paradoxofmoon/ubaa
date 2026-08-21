@@ -13,7 +13,9 @@ interface NetworkApiBackend {
 
 /** 校园网流量查询 API 服务入口。 根据当前连接模式自动选择直连、WebVPN 或中继后端。 */
 class NetworkApi(
-    private val backendProvider: () -> NetworkApiBackend = { ConnectionRuntime.apiFactory().networkApi() }
+    private val backendProvider: () -> NetworkApiBackend = {
+      ConnectionRuntime.apiFactory().networkApi()
+    }
 ) {
   internal constructor(backend: NetworkApiBackend) : this({ backend })
 
@@ -31,13 +33,10 @@ class NetworkApi(
   }
 }
 
-internal class RelayNetworkApiBackend(
-    private val apiClient: ApiClient = ApiClientProvider.shared
-) : NetworkApiBackend {
+internal class RelayNetworkApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
+    NetworkApiBackend {
   override suspend fun getTraffic(): Result<TrafficData> {
     // TODO: 实现 SERVER_RELAY 模式下的校园网流量查询中继接口
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网流量查询尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网流量查询尚未实现"))
   }
 }

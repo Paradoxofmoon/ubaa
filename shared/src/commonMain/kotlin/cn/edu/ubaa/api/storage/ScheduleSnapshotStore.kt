@@ -5,10 +5,7 @@ import com.russhwolf.settings.Settings
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
-/**
- * 今日课表快照存储。App 每次成功加载今日课表时写入，供桌面小组件离线读取显示。
- * 保存的是「当天日期的课程」，并记录快照日期，小组件只在日期匹配当天时使用。
- */
+/** 今日课表快照存储。App 每次成功加载今日课表时写入，供桌面小组件离线读取显示。 保存的是「当天日期的课程」，并记录快照日期，小组件只在日期匹配当天时使用。 */
 object ScheduleSnapshotStore {
   private const val KEY_CLASSES = "schedule_snapshot_classes"
   private const val KEY_DATE = "schedule_snapshot_date"

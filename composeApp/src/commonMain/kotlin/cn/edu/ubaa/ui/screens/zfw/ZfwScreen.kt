@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -212,11 +209,12 @@ private fun CaptchaInputRow(
         )
       } else if (imageBytes != null) {
         AsyncImage(
-            model = ImageRequest.Builder(LocalPlatformContext.current)
-                .data(imageBytes)
-                .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
-                .build(),
+            model =
+                ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(imageBytes)
+                    .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
+                    .build(),
             contentDescription = "验证码",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillWidth,
@@ -244,10 +242,7 @@ private fun CaptchaInputRow(
       // 点击卡片空白区域也可刷新
       if (!isLoading) {
         Box(
-            modifier =
-                Modifier.fillMaxSize()
-                    .padding(end = 48.dp)
-                    .clickable { onRefreshClick() },
+            modifier = Modifier.fillMaxSize().padding(end = 48.dp).clickable { onRefreshClick() },
         )
       }
     }
@@ -415,9 +410,7 @@ private fun ZfwPayForm(
       }
     }
 
-    OutlinedButton(onClick = onResetClick, modifier = Modifier.fillMaxWidth()) {
-      Text("重新登录")
-    }
+    OutlinedButton(onClick = onResetClick, modifier = Modifier.fillMaxWidth()) { Text("重新登录") }
 
     uiState.error?.let { ErrorCard(message = it) }
   }
@@ -448,11 +441,12 @@ private fun PayCaptchaRow(
         )
       } else if (imageBytes != null) {
         AsyncImage(
-            model = ImageRequest.Builder(LocalPlatformContext.current)
-                .data(imageBytes)
-                .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
-                .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
-                .build(),
+            model =
+                ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(imageBytes)
+                    .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
+                    .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
+                    .build(),
             contentDescription = "缴费验证码",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit,
@@ -501,9 +495,7 @@ private fun ZfwQrcodeContent(
           fontWeight = FontWeight.Bold,
           modifier = Modifier.weight(1f),
       )
-      OutlinedButton(onClick = onBackClick) {
-        Text("返回")
-      }
+      OutlinedButton(onClick = onBackClick) { Text("返回") }
     }
 
     Text(
@@ -523,11 +515,12 @@ private fun ZfwQrcodeContent(
       ) {
         if (imageBytes != null) {
           AsyncImage(
-              model = ImageRequest.Builder(LocalPlatformContext.current)
-                  .data(imageBytes)
-                  .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
-                  .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
-                  .build(),
+              model =
+                  ImageRequest.Builder(LocalPlatformContext.current)
+                      .data(imageBytes)
+                      .memoryCachePolicy(coil3.request.CachePolicy.DISABLED)
+                      .diskCachePolicy(coil3.request.CachePolicy.DISABLED)
+                      .build(),
               contentDescription = "支付二维码",
               modifier = Modifier.fillMaxWidth(),
               contentScale = ContentScale.Fit,

@@ -21,15 +21,13 @@ actual fun InAppWebView(
     userAgentOverride: String?,
     enableMobileViewport: Boolean,
 ) {
-    val uriHandler = LocalUriHandler.current
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text("此功能需要在浏览器中打开", style = MaterialTheme.typography.bodyLarge)
-        Button(onClick = { uriHandler.openUri(url) }) {
-            Text("在浏览器中打开")
-        }
-    }
+  val uriHandler = LocalUriHandler.current
+  Column(
+      modifier = modifier.padding(32.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+  ) {
+    Text("此功能需要在浏览器中打开", style = MaterialTheme.typography.bodyLarge)
+    Button(onClick = { uriHandler.openUri(url) }) { Text("在浏览器中打开") }
+  }
 }

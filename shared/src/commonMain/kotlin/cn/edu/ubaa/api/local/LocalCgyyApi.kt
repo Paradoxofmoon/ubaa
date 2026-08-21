@@ -56,9 +56,11 @@ internal class LocalCgyyApiBackend(
 
   private val venueLabel = if (sportVenue) "运动场地" else "研讨室"
   private val reservationRoleId: Int? = if (sportVenue) null else 3
-  private val baseUrl = if (sportVenue) LocalCgyyClient.SPORT_BASE_URL else LocalCgyyClient.DEFAULT_BASE_URL
+  private val baseUrl =
+      if (sportVenue) LocalCgyyClient.SPORT_BASE_URL else LocalCgyyClient.DEFAULT_BASE_URL
   private val ssoCookieName =
-      if (sportVenue) LocalCgyyClient.SPORT_SSO_COOKIE_NAME else LocalCgyyClient.DEFAULT_SSO_COOKIE_NAME
+      if (sportVenue) LocalCgyyClient.SPORT_SSO_COOKIE_NAME
+      else LocalCgyyClient.DEFAULT_SSO_COOKIE_NAME
   private val referrerUrl =
       if (sportVenue) LocalCgyyClient.SPORT_REFERRER_URL else LocalCgyyClient.DEFAULT_REFERRER_URL
 
@@ -203,7 +205,9 @@ internal class LocalCgyyApiBackend(
       }
 
   override suspend fun getOrderDetail(orderId: Int): Result<CgyyOrderDto> =
-      execute("${venueLabel}预约详情加载失败，请稍后重试") { _, client -> mapOrder(client.getOrderDetail(orderId)) }
+      execute("${venueLabel}预约详情加载失败，请稍后重试") { _, client ->
+        mapOrder(client.getOrderDetail(orderId))
+      }
 
   override suspend fun cancelOrder(orderId: Int): Result<CgyyReservationSubmitResponse> =
       execute("${venueLabel}预约取消失败，请稍后重试") { _, client ->
@@ -747,7 +751,11 @@ private class LocalCgyyClient(
     if (isLoginRedirect(response, body)) {
       accessToken = null
       if (!allowRetry) {
-        throw LocalCgyyApiException("${venueLabel}系统登录状态失效", "unauthenticated", HttpStatusCode.Unauthorized)
+        throw LocalCgyyApiException(
+            "${venueLabel}系统登录状态失效",
+            "unauthenticated",
+            HttpStatusCode.Unauthorized,
+        )
       }
       ensureBusinessLogin(forceRefresh = true)
       return requestJson(
@@ -917,7 +925,10 @@ private class LocalCgyyClient(
             put("id", JsonPrimitive(siteId))
             put("siteName", JsonPrimitive(site["siteName"]?.jsonPrimitive?.contentOrNull.orEmpty()))
             put("venueName", JsonPrimitive(venueName))
-            put("campusName", JsonPrimitive(site["campusName"]?.jsonPrimitive?.contentOrNull.orEmpty()))
+            put(
+                "campusName",
+                JsonPrimitive(site["campusName"]?.jsonPrimitive?.contentOrNull.orEmpty()),
+            )
             // 保留"是否支持预约"标记（用于原生过滤掉不可订场的场馆）
             val isSupportRaw = site["isSupportReservation"]
             val isSupport =

@@ -537,5 +537,6 @@ class CgyyViewModel(
 }
 
 /** 仅保留支持预约的场馆（isSupportReservation 为 null 或 true；丢弃明确 false 的）。 */
-private fun List<CgyyVenueSiteDto>.filterReservable(): List<CgyyVenueSiteDto> =
-    filter { it.isSupportReservation != false }
+private fun List<CgyyVenueSiteDto>.filterReservable(): List<CgyyVenueSiteDto> = filter {
+  it.isSupportReservation != false
+}

@@ -4,10 +4,6 @@ import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.model.dto.LoginStatsConnectionMode
 import cn.edu.ubaa.model.dto.LoginStatsReportRequest
 import cn.edu.ubaa.model.dto.LoginStatsSuccessMode
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 
 internal object LoginStatsReporter {
   internal var reporter: suspend (LoginStatsReportRequest) -> Unit = defaultReporter()

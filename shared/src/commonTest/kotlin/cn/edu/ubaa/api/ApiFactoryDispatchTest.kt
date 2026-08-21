@@ -539,6 +539,7 @@ private class FakeNetworkApiBackend : NetworkApiBackend {
 private class FakeZfwApiBackend : ZfwApiBackend {
   var fetchCaptchaCalls = 0
     private set
+
   var loginCalls = 0
     private set
 

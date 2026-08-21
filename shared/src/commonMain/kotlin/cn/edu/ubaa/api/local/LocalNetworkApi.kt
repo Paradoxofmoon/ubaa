@@ -4,8 +4,8 @@ import cn.edu.ubaa.api.auth.ApiCallException
 import cn.edu.ubaa.api.auth.toUserFacingApiException
 import cn.edu.ubaa.api.auth.userFacingMessageForCode
 import cn.edu.ubaa.api.feature.NetworkApiBackend
-import cn.edu.ubaa.api.storage.CredentialStore
 import cn.edu.ubaa.api.network.DebugFileSink
+import cn.edu.ubaa.api.storage.CredentialStore
 import cn.edu.ubaa.model.dto.TrafficData
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.get
@@ -36,17 +36,14 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
     return try {
       appLogin(username, password)
       val response =
-          LocalUpstreamClientProvider.shared()
-              .get(
-                  localUpstreamUrl(
-                      "https://app.buaa.edu.cn/buaanet/wap/default/index"
-                  )
-              ) {
-                header(
-                    HttpHeaders.Accept,
-                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                )
-              }
+          LocalUpstreamClientProvider.shared().get(
+              localUpstreamUrl("https://app.buaa.edu.cn/buaanet/wap/default/index")
+          ) {
+            header(
+                HttpHeaders.Accept,
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            )
+          }
 
       parseTrafficResponse(response)
     } catch (e: Exception) {
@@ -56,23 +53,20 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
 
   private suspend fun appLogin(username: String, password: String) {
     val response =
-        LocalUpstreamClientProvider.shared()
-            .post(
-                localUpstreamUrl(
-                    "https://app.buaa.edu.cn/uc/wap/login/check"
-                )
-            ) {
-              header(HttpHeaders.Accept, "application/json, text/plain, */*")
-              header("X-Requested-With", "XMLHttpRequest")
-              setBody(
-                  FormDataContent(
-                      Parameters.build {
-                        append("username", username)
-                        append("password", password)
-                      }
-                  )
+        LocalUpstreamClientProvider.shared().post(
+            localUpstreamUrl("https://app.buaa.edu.cn/uc/wap/login/check")
+        ) {
+          header(HttpHeaders.Accept, "application/json, text/plain, */*")
+          header("X-Requested-With", "XMLHttpRequest")
+          setBody(
+              FormDataContent(
+                  Parameters.build {
+                    append("username", username)
+                    append("password", password)
+                  }
               )
-            }
+          )
+        }
 
     val body = response.bodyAsText()
     if (response.status != HttpStatusCode.OK) {
@@ -84,13 +78,14 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
     }
 
     val payload =
-        runCatching { json.decodeFromString<JsonObject>(body) }.getOrElse {
-          throw ApiCallException(
-              message = "校园网登录响应解析失败",
-              status = HttpStatusCode.BadGateway,
-              code = "network_error",
-          )
-        }
+        runCatching { json.decodeFromString<JsonObject>(body) }
+            .getOrElse {
+              throw ApiCallException(
+                  message = "校园网登录响应解析失败",
+                  status = HttpStatusCode.BadGateway,
+                  code = "network_error",
+              )
+            }
 
     if (!isLoginSuccess(payload)) {
       throw ApiCallException(
@@ -135,7 +130,9 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
 
   private fun isLoginSuccess(payload: JsonObject): Boolean {
     val primitive = payload["e"]?.jsonPrimitive ?: return false
-    primitive.intOrNull?.let { return it == 0 }
+    primitive.intOrNull?.let {
+      return it == 0
+    }
     return primitive.contentOrNull == "0"
   }
 
@@ -144,8 +141,7 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
     if (localIsSsoUrl(response.call.request.url.toString())) return true
     val trimmed = body.trimStart()
     return trimmed.startsWith("<!DOCTYPE html", ignoreCase = true) &&
-        (body.contains("input name=\"execution\"") ||
-            body.contains("统一身份认证", ignoreCase = true))
+        (body.contains("input name=\"execution\"") || body.contains("统一身份认证", ignoreCase = true))
   }
 
   private fun extractTrafficData(html: String): TrafficData {
@@ -177,13 +173,13 @@ internal class LocalNetworkApiBackend : NetworkApiBackend {
             RegexOption.IGNORE_CASE,
         )
     val section = sectionRegex.find(html)?.value ?: return emptyList()
-    return numberGbRegex.findAll(section).mapNotNull { match ->
-      match.groupValues.getOrNull(1)?.toDoubleOrNull()
-    }.toList()
+    return numberGbRegex
+        .findAll(section)
+        .mapNotNull { match -> match.groupValues.getOrNull(1)?.toDoubleOrNull() }
+        .toList()
   }
 
   companion object {
-    private val numberGbRegex =
-        Regex("""(\d+(?:\.\d+)?)\s*[Gg][Bb]""", RegexOption.IGNORE_CASE)
+    private val numberGbRegex = Regex("""(\d+(?:\.\d+)?)\s*[Gg][Bb]""", RegexOption.IGNORE_CASE)
   }
 }

@@ -19,8 +19,8 @@ actual fun InAppWebView(
     userAgentOverride: String?,
     enableMobileViewport: Boolean,
 ) {
-    LaunchedEffect(url) {
-        val nsUrl = NSURL.URLWithString(url) ?: return@LaunchedEffect
-        UIApplication.sharedApplication.openURL(nsUrl)
-    }
+  LaunchedEffect(url) {
+    val nsUrl = NSURL.URLWithString(url) ?: return@LaunchedEffect
+    UIApplication.sharedApplication.openURL(nsUrl)
+  }
 }

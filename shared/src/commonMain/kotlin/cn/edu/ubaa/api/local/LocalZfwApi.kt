@@ -2,7 +2,6 @@ package cn.edu.ubaa.api.local
 
 import cn.edu.ubaa.api.auth.ApiCallException
 import cn.edu.ubaa.api.auth.toUserFacingApiException
-import cn.edu.ubaa.api.auth.userFacingMessageForCode
 import cn.edu.ubaa.api.feature.ZfwApiBackend
 import cn.edu.ubaa.api.feature.ZfwLoginResult
 import cn.edu.ubaa.api.feature.ZfwPayPageData
@@ -50,10 +49,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
     lastLoginPage = loginPage
     platformLog("ZFW", "fetchCaptcha: captchaSrc=${loginPage.captchaSrc}")
     val captchaUrl = resolveCaptchaUrl(loginPage.captchaSrc)
-    val response =
-        client.get(captchaUrl) {
-          header(HttpHeaders.Accept, "image/*,*/*")
-        }
+    val response = client.get(captchaUrl) { header(HttpHeaders.Accept, "image/*,*/*") }
     platformLog("ZFW", "fetchCaptcha: status=${response.status}")
     if (response.status != HttpStatusCode.OK) {
       throw localBusinessApiException(
@@ -80,11 +76,12 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
 
     return try {
       val client = sessionClient ?: return Result.failure(ApiCallException("请先获取验证码"))
-      val loginPage =
-          lastLoginPage
-              ?: return Result.failure(ApiCallException("请先获取验证码"))
+      val loginPage = lastLoginPage ?: return Result.failure(ApiCallException("请先获取验证码"))
       val encryptedPassword = encryptPassword(password, loginPage.rsaPublicKeyPem)
-      platformLog("ZFW", "login: username=$username, captchaLen=${captcha.length}, csrfParam=${loginPage.csrfParam}, rsaKeyFromPage=${loginPage.rsaPublicKeyPem.isNotBlank()}")
+      platformLog(
+          "ZFW",
+          "login: username=$username, captchaLen=${captcha.length}, csrfParam=${loginPage.csrfParam}, rsaKeyFromPage=${loginPage.rsaPublicKeyPem.isNotBlank()}",
+      )
       val validateResponse =
           validateUser(
               client = client,
@@ -94,12 +91,13 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
               captcha = captcha,
               smsCode = smsCode,
           )
-      platformLog("ZFW", "validateUser: success=${validateResponse.success}, inputSms=${validateResponse.inputSms}, msg=${validateResponse.message}")
+      platformLog(
+          "ZFW",
+          "validateUser: success=${validateResponse.success}, inputSms=${validateResponse.inputSms}, msg=${validateResponse.message}",
+      )
 
       if (!validateResponse.success) {
-        return Result.failure(
-            ApiCallException(validateResponse.message ?: "登录验证失败，请检查账号密码或验证码")
-        )
+        return Result.failure(ApiCallException(validateResponse.message ?: "登录验证失败，请检查账号密码或验证码"))
       }
 
       if (validateResponse.inputSms) {
@@ -188,9 +186,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
   /**
    * 从首页 HTML 的"产品信息"表格中提取流量数据。
    *
-   * 表格列结构（data-col-seq）：
-   * 1=产品名称, 2=计费策略, 3=已用流量, 4=已用时长, 6=免费流量剩余(不含套餐),
-   * 7=计费流量剩余(不含套餐), 12=结算日期
+   * 表格列结构（data-col-seq）： 1=产品名称, 2=计费策略, 3=已用流量, 4=已用时长, 6=免费流量剩余(不含套餐), 7=计费流量剩余(不含套餐), 12=结算日期
    */
   private fun extractTrafficData(html: String): TrafficData {
     val tableMatch = PRODUCT_TABLE_REGEX.find(html)
@@ -251,8 +247,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
   }
 
   override suspend fun fetchPayPage(): Result<ZfwPayPageData> {
-    val client = sessionClient
-        ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
+    val client = sessionClient ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
 
     return try {
       val response =
@@ -279,14 +274,10 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
       }
 
       val csrfParam =
-          CSRF_PARAM_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim()
-              ?: DEFAULT_CSRF_PARAM
-      val csrfToken =
-          CSRF_TOKEN_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-      val cardNo =
-          CARD_NO_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-      val productId =
-          PRODUCT_ID_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+          CSRF_PARAM_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim() ?: DEFAULT_CSRF_PARAM
+      val csrfToken = CSRF_TOKEN_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+      val cardNo = CARD_NO_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+      val productId = PRODUCT_ID_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
 
       if (csrfToken.isBlank()) {
         return Result.failure(ApiCallException("缴费页面 CSRF 令牌解析失败"))
@@ -307,8 +298,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
   }
 
   override suspend fun fetchPayCaptcha(): Result<ByteArray> {
-    val client = sessionClient
-        ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
+    val client = sessionClient ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
 
     return try {
       val response =
@@ -335,8 +325,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
       captcha: String,
       payPageData: ZfwPayPageData,
   ): Result<ZfwPayResult> {
-    val client = sessionClient
-        ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
+    val client = sessionClient ?: return Result.failure(ApiCallException("请先登录校园网自助服务门户"))
 
     return try {
       val response =
@@ -351,7 +340,10 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
                     append(payPageData.csrfParam, payPageData.csrfToken)
                   },
           ) {
-            header(HttpHeaders.Accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            header(
+                HttpHeaders.Accept,
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            )
             header(HttpHeaders.Referrer, localUpstreamUrl("$ZFW_BASE_URL/pays"))
           }
 
@@ -465,12 +457,9 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
       )
     }
     val html = response.bodyAsText()
-    val csrfToken =
-        CSRF_TOKEN_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-    val csrfParam =
-        CSRF_PARAM_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
-    val captchaSrc =
-        CAPTCHA_SRC_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+    val csrfToken = CSRF_TOKEN_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+    val csrfParam = CSRF_PARAM_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+    val captchaSrc = CAPTCHA_SRC_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
     val rsaPublicKeyPem =
         RSA_PUBLIC_KEY_REGEX.find(html)?.groupValues?.getOrNull(1)?.trim().orEmpty()
 
@@ -522,9 +511,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
     }
 
     return runCatching { json.decodeFromString<ZfwValidateResponse>(body) }
-        .getOrElse {
-          throw ApiCallException("登录验证响应解析失败")
-        }
+        .getOrElse { throw ApiCallException("登录验证响应解析失败") }
   }
 
   private suspend fun finalSubmit(
@@ -547,14 +534,24 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
                     smsCode = smsCode,
                 ),
         ) {
-          header(HttpHeaders.Accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+          header(
+              HttpHeaders.Accept,
+              "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          )
           header(HttpHeaders.Referrer, localUpstreamUrl(ZFW_BASE_URL))
         }
 
     val body = response.bodyAsText()
-    platformLog("ZFW", "finalSubmit: status=${response.status}, isLoginPage=${isLoginPage(body)}, bodyLen=${body.length}")
+    platformLog(
+        "ZFW",
+        "finalSubmit: status=${response.status}, isLoginPage=${isLoginPage(body)}, bodyLen=${body.length}",
+    )
     // 302/301 重定向 = 登录成功，服务器跳转到自助服务首页
-    if (response.status == HttpStatusCode.Found || response.status == HttpStatusCode.MovedPermanently || response.status == HttpStatusCode.SeeOther) {
+    if (
+        response.status == HttpStatusCode.Found ||
+            response.status == HttpStatusCode.MovedPermanently ||
+            response.status == HttpStatusCode.SeeOther
+    ) {
       platformLog("ZFW", "finalSubmit: login success via redirect")
       return
     }
@@ -623,15 +620,15 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
 
   private fun isLoginPage(html: String): Boolean {
     val trimmed = html.trimStart()
-    if (!trimmed.startsWith("<!DOCTYPE", ignoreCase = true) &&
-        !trimmed.startsWith("<html", ignoreCase = true)
+    if (
+        !trimmed.startsWith("<!DOCTYPE", ignoreCase = true) &&
+            !trimmed.startsWith("<html", ignoreCase = true)
     ) {
       return false
     }
     // 只认登录页独有的特征：登录表单和登录验证码。
     // 注意：csrf-param 登录页和已登录页都有，不能作为判断依据，否则已登录的 /pays 页会被误判为登录页。
-    return html.contains("id=\"login-form\"") ||
-        html.contains("id=\"loginform-verifycode-image\"")
+    return html.contains("id=\"login-form\"") || html.contains("id=\"loginform-verifycode-image\"")
   }
 
   private fun extractLoginError(html: String): String? {
@@ -648,9 +645,7 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
   }
 
   private fun String.stripHtml(): String =
-      replace(Regex("<[^>]+>"), " ")
-          .replace(Regex("\\s+"), " ")
-          .trim()
+      replace(Regex("<[^>]+>"), " ").replace(Regex("\\s+"), " ").trim()
 
   private data class LoginPageData(
       val csrfToken: String,
@@ -664,19 +659,28 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
     private const val DEFAULT_CSRF_PARAM = "_csrf"
 
     private val CSRF_TOKEN_REGEX =
-        Regex("""<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["'][^>]*>""",
+            RegexOption.IGNORE_CASE,
+        )
     private val CSRF_PARAM_REGEX =
-        Regex("""<meta[^>]*name=["']csrf-param["'][^>]*content=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<meta[^>]*name=["']csrf-param["'][^>]*content=["']([^"']+)["'][^>]*>""",
+            RegexOption.IGNORE_CASE,
+        )
     private val CAPTCHA_SRC_REGEX =
-        Regex("""<img[^>]*id=["']loginform-verifycode-image["'][^>]*src=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<img[^>]*id=["']loginform-verifycode-image["'][^>]*src=["']([^"']+)["'][^>]*>""",
+            RegexOption.IGNORE_CASE,
+        )
     private val RSA_PUBLIC_KEY_REGEX =
-        Regex("""<input[^>]*id=["']public["'][^>]*value=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<input[^>]*id=["']public["'][^>]*value=["']([^"']+)["'][^>]*>""",
+            RegexOption.IGNORE_CASE,
+        )
 
     // 流量解析相关正则
-    /**
-     * 匹配"产品信息"表格——即包含"免费流量剩余"表头的那个 table。
-     * 首页有多个 kv-grid-table（在线信息表、产品信息表），必须精确定位产品信息表。
-     */
+    /** 匹配"产品信息"表格——即包含"免费流量剩余"表头的那个 table。 首页有多个 kv-grid-table（在线信息表、产品信息表），必须精确定位产品信息表。 */
     private val PRODUCT_TABLE_REGEX =
         Regex(
             """<table[^>]*class=["'][^"']*kv-grid-table[^"']*["'][^>]*>[\s\S]*?免费流量剩余[\s\S]*?</table>""",
@@ -694,10 +698,16 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
     // 充值相关正则
     /** 匹配一卡通账号（value 属性在 disabled input 中）。 */
     private val CARD_NO_REGEX =
-        Regex("""<input[^>]*name=["']OneCardForm\[cardNo\]["'][^>]*value=["']([^"']+)["'][^>]*>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<input[^>]*name=["']OneCardForm\[cardNo\]["'][^>]*value=["']([^"']+)["'][^>]*>""",
+            RegexOption.IGNORE_CASE,
+        )
     /** 匹配产品 ID（select 里的 option value）。 */
     private val PRODUCT_ID_REGEX =
-        Regex("""<select[^>]*name=["']OneCardForm\[productId\]["'][\s\S]*?<option[^>]*value=["']([^"']+)["'][^>]*>[\s\S]*?</select>""", RegexOption.IGNORE_CASE)
+        Regex(
+            """<select[^>]*name=["']OneCardForm\[productId\]["'][\s\S]*?<option[^>]*value=["']([^"']+)["'][^>]*>[\s\S]*?</select>""",
+            RegexOption.IGNORE_CASE,
+        )
 
     private const val HEX_DIGITS = "0123456789ABCDEF"
 

@@ -9,10 +9,7 @@ import kotlinx.serialization.Serializable
  * @property data 余额数据。
  */
 @Serializable
-data class CardBalanceResponse(
-    val success: Boolean = false,
-    val data: CardBalanceData? = null
-)
+data class CardBalanceResponse(val success: Boolean = false, val data: CardBalanceData? = null)
 
 /**
  * 校园一卡通余额数据。
@@ -21,7 +18,4 @@ data class CardBalanceResponse(
  * @property unclaimedAmount 待领取金额。
  */
 @Serializable
-data class CardBalanceData(
-    val balance: String = "0.00",
-    val unclaimedAmount: String = "0.00"
-)
+data class CardBalanceData(val balance: String = "0.00", val unclaimedAmount: String = "0.00")

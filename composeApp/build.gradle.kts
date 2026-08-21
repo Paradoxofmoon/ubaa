@@ -51,9 +51,7 @@ kotlin {
       implementation(libs.androidx.activity.compose)
       implementation(libs.ktor.client.okhttp)
     }
-    iosMain.dependencies {
-      implementation(libs.ktor.client.darwin)
-    }
+    iosMain.dependencies { implementation(libs.ktor.client.darwin) }
     commonMain.dependencies {
       implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
       implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
@@ -87,12 +85,8 @@ kotlin {
       implementation(libs.kotlinx.coroutines.test)
     }
 
-    jsMain.dependencies {
-      implementation(libs.ktor.client.js)
-    }
-    wasmJsMain.dependencies {
-      implementation(libs.ktor.client.js)
-    }
+    jsMain.dependencies { implementation(libs.ktor.client.js) }
+    wasmJsMain.dependencies { implementation(libs.ktor.client.js) }
 
     jvmMain.dependencies {
       implementation(compose.desktop.currentOs)

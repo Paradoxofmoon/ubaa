@@ -107,8 +107,7 @@ class ZfwApi(
       password: String,
       captcha: String,
       smsCode: String? = null,
-  ): Result<ZfwLoginResult> =
-      currentBackend().login(username, password, captcha, smsCode)
+  ): Result<ZfwLoginResult> = currentBackend().login(username, password, captcha, smsCode)
 
   /** 查询校园网流量，需在 [login] 成功后调用。 */
   suspend fun getTraffic(): Result<TrafficData> = currentBackend().getTraffic()
@@ -127,9 +126,8 @@ class ZfwApi(
   ): Result<ZfwPayResult> = currentBackend().submitPay(amount, captcha, payPageData)
 }
 
-internal class RelayZfwApiBackend(
-    private val apiClient: ApiClient = ApiClientProvider.shared
-) : ZfwApiBackend {
+internal class RelayZfwApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
+    ZfwApiBackend {
   override suspend fun fetchCaptcha(): Pair<ByteArray, String> {
     throw NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现")
   }
@@ -141,27 +139,19 @@ internal class RelayZfwApiBackend(
       smsCode: String?,
   ): Result<ZfwLoginResult> {
     // TODO: 实现 SERVER_RELAY 模式下的校园网充值登录中继接口
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网充值登录尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值登录尚未实现"))
   }
 
   override suspend fun getTraffic(): Result<TrafficData> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网流量查询尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网流量查询尚未实现"))
   }
 
   override suspend fun fetchPayPage(): Result<ZfwPayPageData> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
   }
 
   override suspend fun fetchPayCaptcha(): Result<ByteArray> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
   }
 
   override suspend fun submitPay(
@@ -169,8 +159,6 @@ internal class RelayZfwApiBackend(
       captcha: String,
       payPageData: ZfwPayPageData,
   ): Result<ZfwPayResult> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
   }
 }

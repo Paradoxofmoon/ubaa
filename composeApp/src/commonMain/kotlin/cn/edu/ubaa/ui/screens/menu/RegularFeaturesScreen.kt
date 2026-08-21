@@ -9,14 +9,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
@@ -108,25 +108,25 @@ fun RegularFeaturesScreen(
               description = "查询校园卡余额",
               icon = Icons.Default.AccountBalanceWallet,
           ),
-           FeatureItem(
-               id = "network",
-               title = "校园网",
-               description = "查询免费、赠送与计费流量",
-               icon = Icons.Default.NetworkWifi,
-           ),
-           FeatureItem(
-               id = "zfw",
-               title = "校园网充值",
-               description = "登录自助服务门户完成缴费充值",
-               icon = Icons.Default.Paid,
-           ),
-           FeatureItem(
-               id = "electricity",
-               title = "电费充值",
-               description = "北航电费在线充值缴费",
-               icon = Icons.Default.Bolt,
-           ),
-       )
+          FeatureItem(
+              id = "network",
+              title = "校园网",
+              description = "查询免费、赠送与计费流量",
+              icon = Icons.Default.NetworkWifi,
+          ),
+          FeatureItem(
+              id = "zfw",
+              title = "校园网充值",
+              description = "登录自助服务门户完成缴费充值",
+              icon = Icons.Default.Paid,
+          ),
+          FeatureItem(
+              id = "electricity",
+              title = "电费充值",
+              description = "北航电费在线充值缴费",
+              icon = Icons.Default.Bolt,
+          ),
+      )
 
   Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
     // Text(

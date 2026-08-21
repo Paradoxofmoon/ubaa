@@ -42,7 +42,8 @@ fun NetworkScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-  val pullRefreshState = rememberPullRefreshState(refreshing = uiState.isRefreshing, onRefresh = onRefresh)
+  val pullRefreshState =
+      rememberPullRefreshState(refreshing = uiState.isRefreshing, onRefresh = onRefresh)
 
   Box(modifier = modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     LazyColumn(
@@ -67,7 +68,10 @@ fun NetworkScreen(
           item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
             ) {
               Column(
                   modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -253,7 +257,9 @@ private fun TrafficInfoCard(
           text = subtitle,
           style = MaterialTheme.typography.headlineLarge.copy(fontSize = 24.sp),
           fontWeight = FontWeight.Bold,
-          color = if (isSecondary) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+          color =
+              if (isSecondary) MaterialTheme.colorScheme.onSurfaceVariant
+              else MaterialTheme.colorScheme.onSurface,
       )
     }
   }

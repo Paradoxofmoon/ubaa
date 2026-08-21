@@ -9,17 +9,15 @@ import io.ktor.http.HttpHeaders
 /**
  * 供 composeApp 电费缴费等功能复用的 cc-pay 会话与收银台工具。
  *
- * 背景：电费(shsd.buaa.edu.cn)下单返回的 payUrl 是
- * `https://pass.cc-pay.cn/login?backUrl=<url-encoded cashier 地址>`，
- * 跳过去还需登录 cc-pay。而校园卡充值已通过 CAS SSO 建立了 cc-pay 会话。
- * 本文件把「建立 cc-pay 会话」和「从 payUrl 解析收银台地址」提升为 public，
- * 让电费等其它功能复用同一套 session 与隐藏 WebView 唤起支付方案，避免重复登录。
+ * 背景：电费(shsd.buaa.edu.cn)下单返回的 payUrl 是 `https://pass.cc-pay.cn/login?backUrl=<url-encoded cashier
+ * 地址>`， 跳过去还需登录 cc-pay。而校园卡充值已通过 CAS SSO 建立了 cc-pay 会话。 本文件把「建立 cc-pay 会话」和「从 payUrl 解析收银台地址」提升为
+ * public， 让电费等其它功能复用同一套 session 与隐藏 WebView 唤起支付方案，避免重复登录。
  */
 
 /**
- * 建立 pass/mall/cashier.cc-pay.cn 会话（与校园卡共用同一套 CAS SSO 跳转逻辑）。
- * 复用 [LocalUpstreamClientProvider.shared] 共享 client，cookie 自动落入 [LocalCookieStore]，
- * 之后 [buildCcpayCookieHeader] 即可取到 cc-pay 域 cookie 注入隐藏 WebView。
+ * 建立 pass/mall/cashier.cc-pay.cn 会话（与校园卡共用同一套 CAS SSO 跳转逻辑）。 复用
+ * [LocalUpstreamClientProvider.shared] 共享 client，cookie 自动落入 [LocalCookieStore]， 之后
+ * [buildCcpayCookieHeader] 即可取到 cc-pay 域 cookie 注入隐藏 WebView。
  */
 suspend fun ensureCcpaySession() {
   val client = LocalUpstreamClientProvider.shared()
@@ -30,7 +28,10 @@ suspend fun ensureCcpaySession() {
               "https://sso.buaa.edu.cn/login?service=https%3A%2F%2Fpass.cc-pay.cn%2Flogin"
           )
       ) {
-        header(HttpHeaders.Accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        header(
+            HttpHeaders.Accept,
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
       }
   platformLog("CCPAY", "CAS跳转 pass: status=${r1.status}")
   // mall 登录（充值入口在 mall，需独立建立会话）
@@ -40,7 +41,10 @@ suspend fun ensureCcpaySession() {
               "https://sso.buaa.edu.cn/login?service=https%3A%2F%2Fmall.cc-pay.cn%2Flogin"
           )
       ) {
-        header(HttpHeaders.Accept, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        header(
+            HttpHeaders.Accept,
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        )
       }
   platformLog("CCPAY", "CAS跳转 mall: status=${r2.status} url=${r2.call.request.url}")
   // 触达 mall / cashier
@@ -74,7 +78,10 @@ fun extractCashierUrl(payUrl: String?): String? {
     // 若包含 backUrl= 参数，仍优先取 backUrl（登录回跳形态）；否则整体就是收银台地址
     val back = extractBackUrlParam(trimmed)
     if (back != null && back.contains("cashier.cc-pay.cn")) return back
-    if (trimmed.startsWith("https://cashier.cc-pay.cn") || trimmed.startsWith("http://cashier.cc-pay.cn")) {
+    if (
+        trimmed.startsWith("https://cashier.cc-pay.cn") ||
+            trimmed.startsWith("http://cashier.cc-pay.cn")
+    ) {
       return trimmed
     }
   }

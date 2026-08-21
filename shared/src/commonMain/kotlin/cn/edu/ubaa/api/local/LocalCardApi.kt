@@ -3,10 +3,10 @@ package cn.edu.ubaa.api.local
 import cn.edu.ubaa.api.auth.ApiCallException
 import cn.edu.ubaa.api.auth.toUserFacingApiException
 import cn.edu.ubaa.api.auth.userFacingMessageForCode
-import cn.edu.ubaa.api.network.platformLog
 import cn.edu.ubaa.api.feature.CardApiBackend
 import cn.edu.ubaa.api.feature.CardPayWay
 import cn.edu.ubaa.api.feature.CardRechargeResult
+import cn.edu.ubaa.api.network.platformLog
 import cn.edu.ubaa.model.dto.CardBalanceData
 import cn.edu.ubaa.model.dto.CardBalanceResponse
 import io.ktor.client.request.get
@@ -45,12 +45,13 @@ internal class LocalCardApiBackend : CardApiBackend {
     return try {
       ensureCcpaySession()
       val response =
-          LocalUpstreamClientProvider.shared()
-              .get(localUpstreamUrl("https://pass.cc-pay.cn/api/campus_card/balance")) {
-                parameter("t", Clock.System.now().toEpochMilliseconds())
-                parameter("stuNo", studentId)
-                header(HttpHeaders.Accept, "application/json, text/plain, */*")
-              }
+          LocalUpstreamClientProvider.shared().get(
+              localUpstreamUrl("https://pass.cc-pay.cn/api/campus_card/balance")
+          ) {
+            parameter("t", Clock.System.now().toEpochMilliseconds())
+            parameter("stuNo", studentId)
+            header(HttpHeaders.Accept, "application/json, text/plain, */*")
+          }
       parseBalanceResponse(response)
     } catch (e: Exception) {
       Result.failure(e.toUserFacingApiException("一卡通余额查询失败，请稍后重试"))
@@ -68,7 +69,12 @@ internal class LocalCardApiBackend : CardApiBackend {
       val itemId = fetchRechargeItemId()
       if (itemId.isNotBlank()) {
         val ways = fetchPayWays(itemId)
-        val hasWxOrAli = ways.any { it.channel.contains("wx") || it.channel.contains("weixin") || it.channel.contains("alipay") }
+        val hasWxOrAli =
+            ways.any {
+              it.channel.contains("wx") ||
+                  it.channel.contains("weixin") ||
+                  it.channel.contains("alipay")
+            }
         if (hasWxOrAli) {
           useRealTime = true
           return Result.success(ways)
@@ -83,7 +89,8 @@ internal class LocalCardApiBackend : CardApiBackend {
     } catch (e: Exception) {
       // 任何异常回退到已实测的移动端支付方式，保证充值可用
       val fallback = knownMobilePayWays()
-      if (fallback.isNotEmpty()) Result.success(fallback) else Result.failure(e.toUserFacingApiException("获取支付方式失败，请稍后重试"))
+      if (fallback.isNotEmpty()) Result.success(fallback)
+      else Result.failure(e.toUserFacingApiException("获取支付方式失败，请稍后重试"))
     }
   }
 
@@ -117,10 +124,22 @@ internal class LocalCardApiBackend : CardApiBackend {
       Result.success(CardRechargeResult(cashierUrl = cashierUrl.ifBlank { null }))
     } catch (e: ApiCallException) {
       platformLog("CR", "充值失败(ApiCall): ${e.message} :: ${e.status}")
-      Result.failure(ApiCallException("充值失败: ${e.message}", e.status ?: HttpStatusCode.BadGateway, "card_error"))
+      Result.failure(
+          ApiCallException(
+              "充值失败: ${e.message}",
+              e.status ?: HttpStatusCode.BadGateway,
+              "card_error",
+          )
+      )
     } catch (e: Exception) {
       platformLog("CR", "充值失败: ${e.message} :: ${e::class.simpleName}")
-      Result.failure(ApiCallException("充值失败: ${e.message ?: e::class.simpleName}", HttpStatusCode.BadGateway, "card_error"))
+      Result.failure(
+          ApiCallException(
+              "充值失败: ${e.message ?: e::class.simpleName}",
+              HttpStatusCode.BadGateway,
+              "card_error",
+          )
+      )
     }
   }
 
@@ -251,23 +270,25 @@ internal class LocalCardApiBackend : CardApiBackend {
       stuNo: String,
       realName: String,
   ): Pair<String, String> {
-    val feeInfoJson = json.encodeToString(
-        buildJsonObject {
-          put("stuNo", JsonPrimitive(stuNo))
-          put("realName", JsonPrimitive(realName))
-        }
-    )
-    val payload = json.encodeToString(
-        buildJsonObject {
-          put("targetId", JsonPrimitive("mall_id"))
-          put("targetType", JsonPrimitive("mall"))
-          put("money", JsonPrimitive(amount))
-          put("itemId", JsonPrimitive(itemId))
-          put("feeInfo", JsonPrimitive(feeInfoJson))
-          put("fromType", JsonPrimitive(CAMPUS_CARD_FEE))
-          put("choice", JsonPrimitive(""))
-        }
-    )
+    val feeInfoJson =
+        json.encodeToString(
+            buildJsonObject {
+              put("stuNo", JsonPrimitive(stuNo))
+              put("realName", JsonPrimitive(realName))
+            }
+        )
+    val payload =
+        json.encodeToString(
+            buildJsonObject {
+              put("targetId", JsonPrimitive("mall_id"))
+              put("targetType", JsonPrimitive("mall"))
+              put("money", JsonPrimitive(amount))
+              put("itemId", JsonPrimitive(itemId))
+              put("feeInfo", JsonPrimitive(feeInfoJson))
+              put("fromType", JsonPrimitive(CAMPUS_CARD_FEE))
+              put("choice", JsonPrimitive(""))
+            }
+        )
     val response =
         LocalUpstreamClientProvider.shared().post(
             localUpstreamUrl("https://mall.cc-pay.cn/api/payment")
@@ -279,7 +300,7 @@ internal class LocalCardApiBackend : CardApiBackend {
           // Referer 需带 name/cardNo/school/money 参数，服务器据此校验
           header(
               HttpHeaders.Referrer,
-              "https://mall.cc-pay.cn/entry/card/$itemId?name=${realName.encodeURLParameter()}&cardNo=$stuNo&school=buaa&money=$amount"
+              "https://mall.cc-pay.cn/entry/card/$itemId?name=${realName.encodeURLParameter()}&cardNo=$stuNo&school=buaa&money=$amount",
           )
         }
     val body = response.bodyAsText()
@@ -336,7 +357,8 @@ internal class LocalCardApiBackend : CardApiBackend {
     val body = response.bodyAsText()
     platformLog("CR", "initiatePay: status=${response.status} body=${body.take(400)}")
     checkCcpaySession(response, body)
-    val data = json.parseToJsonElement(body).jsonObject["data"].safeObject() ?: return CardRechargeResult()
+    val data =
+        json.parseToJsonElement(body).jsonObject["data"].safeObject() ?: return CardRechargeResult()
     return CardRechargeResult(
         payUrl = data["payUrl"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
         payQrCode = data["payQrCode"]?.jsonPrimitive?.contentOrNull?.ifBlank { null },
@@ -352,14 +374,17 @@ internal class LocalCardApiBackend : CardApiBackend {
       throw resolveLocalBusinessAuthenticationFailure("card_error")
     }
     val trimmed = body.trimStart()
-    if (trimmed.startsWith("<!DOCTYPE html", ignoreCase = true) ||
-        trimmed.startsWith("<html", ignoreCase = true) ||
-        body.contains("统一身份认证", ignoreCase = true)) {
+    if (
+        trimmed.startsWith("<!DOCTYPE html", ignoreCase = true) ||
+            trimmed.startsWith("<html", ignoreCase = true) ||
+            body.contains("统一身份认证", ignoreCase = true)
+    ) {
       throw resolveLocalBusinessAuthenticationFailure("card_error")
     }
   }
 
-  private suspend fun parseBalanceResponse(response: HttpResponse): Result<CardBalanceData> {    val body = response.bodyAsText()
+  private suspend fun parseBalanceResponse(response: HttpResponse): Result<CardBalanceData> {
+    val body = response.bodyAsText()
     if (isCardSessionExpired(response, body)) {
       return Result.failure(resolveLocalBusinessAuthenticationFailure("card_error"))
     }
@@ -374,18 +399,19 @@ internal class LocalCardApiBackend : CardApiBackend {
     }
 
     val payload =
-        runCatching { json.decodeFromString<CardBalanceResponse>(body) }.getOrElse {
-          return Result.failure(
-              localBusinessApiException(
-                  "card_error",
-                  userFacingMessageForCode(
+        runCatching { json.decodeFromString<CardBalanceResponse>(body) }
+            .getOrElse {
+              return Result.failure(
+                  localBusinessApiException(
                       "card_error",
+                      userFacingMessageForCode(
+                          "card_error",
+                          HttpStatusCode.InternalServerError,
+                      ),
                       HttpStatusCode.InternalServerError,
-                  ),
-                  HttpStatusCode.InternalServerError,
+                  )
               )
-          )
-        }
+            }
 
     if (!payload.success || payload.data == null) {
       return Result.failure(

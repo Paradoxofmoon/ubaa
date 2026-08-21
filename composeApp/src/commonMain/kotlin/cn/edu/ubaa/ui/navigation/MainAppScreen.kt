@@ -4,8 +4,8 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -35,24 +35,18 @@ import cn.edu.ubaa.ui.screens.card.CardScreen
 import cn.edu.ubaa.ui.screens.card.CardUiState
 import cn.edu.ubaa.ui.screens.card.CardViewModel
 import cn.edu.ubaa.ui.screens.cgyy.CgyyHomeScreen
-import cn.edu.ubaa.ui.screens.cgyy.CgyyUiState
-import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
-import cn.edu.ubaa.ui.screens.network.NetworkScreen
-import cn.edu.ubaa.ui.screens.network.NetworkUiState
-import cn.edu.ubaa.ui.screens.network.NetworkViewModel
-import cn.edu.ubaa.ui.screens.electricity.ElectricityScreen
-import cn.edu.ubaa.ui.screens.electricity.ElectricityUiState
-import cn.edu.ubaa.ui.screens.electricity.ElectricityViewModel
-import cn.edu.ubaa.ui.screens.zfw.ZfwScreen
-import cn.edu.ubaa.ui.screens.zfw.ZfwUiState
-import cn.edu.ubaa.ui.screens.zfw.ZfwViewModel
 import cn.edu.ubaa.ui.screens.cgyy.CgyyLockCodeScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyOrdersScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyReserveFormScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyReservePickerScreen
+import cn.edu.ubaa.ui.screens.cgyy.CgyyUiState
+import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
 import cn.edu.ubaa.ui.screens.cgyy.CgyyWebViewReserveScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomQueryScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomViewModel
+import cn.edu.ubaa.ui.screens.electricity.ElectricityScreen
+import cn.edu.ubaa.ui.screens.electricity.ElectricityUiState
+import cn.edu.ubaa.ui.screens.electricity.ElectricityViewModel
 import cn.edu.ubaa.ui.screens.evaluation.EvaluationScreen
 import cn.edu.ubaa.ui.screens.evaluation.EvaluationViewModel
 import cn.edu.ubaa.ui.screens.exam.ExamScreen
@@ -70,6 +64,9 @@ import cn.edu.ubaa.ui.screens.libbook.LibBookHomeScreen
 import cn.edu.ubaa.ui.screens.libbook.LibBookReserveScreen
 import cn.edu.ubaa.ui.screens.libbook.LibBookViewModel
 import cn.edu.ubaa.ui.screens.menu.*
+import cn.edu.ubaa.ui.screens.network.NetworkScreen
+import cn.edu.ubaa.ui.screens.network.NetworkUiState
+import cn.edu.ubaa.ui.screens.network.NetworkViewModel
 import cn.edu.ubaa.ui.screens.schedule.CourseDetailScreen
 import cn.edu.ubaa.ui.screens.schedule.ScheduleScreen
 import cn.edu.ubaa.ui.screens.schedule.ScheduleViewModel
@@ -83,6 +80,9 @@ import cn.edu.ubaa.ui.screens.ygdk.YgdkClockinFormScreen
 import cn.edu.ubaa.ui.screens.ygdk.YgdkHomeScreen
 import cn.edu.ubaa.ui.screens.ygdk.YgdkUiState
 import cn.edu.ubaa.ui.screens.ygdk.YgdkViewModel
+import cn.edu.ubaa.ui.screens.zfw.ZfwScreen
+import cn.edu.ubaa.ui.screens.zfw.ZfwUiState
+import cn.edu.ubaa.ui.screens.zfw.ZfwViewModel
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.delay
@@ -451,11 +451,11 @@ fun MainAppScreen(
               AppScreen.JUDGE_ASSIGNMENT_DETAIL,
               AppScreen.LIBBOOK_HOME,
               AppScreen.LIBBOOK_RESERVE,
-               AppScreen.LIBBOOK_BOOKINGS,
-               AppScreen.CARD,
-               AppScreen.NETWORK,
-               AppScreen.ZFW,
-               AppScreen.ELECTRICITY -> BottomNavTab.REGULAR
+              AppScreen.LIBBOOK_BOOKINGS,
+              AppScreen.CARD,
+              AppScreen.NETWORK,
+              AppScreen.ZFW,
+              AppScreen.ELECTRICITY -> BottomNavTab.REGULAR
               AppScreen.ADVANCED,
               AppScreen.BYKC_HOME,
               AppScreen.BYKC_COURSES,
@@ -497,11 +497,11 @@ fun MainAppScreen(
             AppScreen.JUDGE_ASSIGNMENT_DETAIL,
             AppScreen.LIBBOOK_HOME,
             AppScreen.LIBBOOK_RESERVE,
-             AppScreen.LIBBOOK_BOOKINGS,
-             AppScreen.CARD,
-             AppScreen.NETWORK,
-             AppScreen.ZFW,
-             AppScreen.ELECTRICITY -> BottomNavTab.REGULAR
+            AppScreen.LIBBOOK_BOOKINGS,
+            AppScreen.CARD,
+            AppScreen.NETWORK,
+            AppScreen.ZFW,
+            AppScreen.ELECTRICITY -> BottomNavTab.REGULAR
             AppScreen.ADVANCED,
             AppScreen.BYKC_HOME,
             AppScreen.BYKC_COURSES,
@@ -650,11 +650,11 @@ fun MainAppScreen(
       AppScreen.LIBBOOK_HOME,
       AppScreen.LIBBOOK_RESERVE -> libBookViewModel?.ensureInitialLoaded(forceRefresh = true)
       AppScreen.LIBBOOK_BOOKINGS -> libBookViewModel?.ensureBookingsLoaded(forceRefresh = true)
-       AppScreen.CARD -> cardViewModel?.ensureLoaded(forceRefresh = true)
-       AppScreen.NETWORK -> networkViewModel?.ensureLoaded(forceRefresh = true)
-       AppScreen.ZFW -> zfwViewModel?.reset()
-       AppScreen.ELECTRICITY -> Unit
-       AppScreen.YGDK_HOME,
+      AppScreen.CARD -> cardViewModel?.ensureLoaded(forceRefresh = true)
+      AppScreen.NETWORK -> networkViewModel?.ensureLoaded(forceRefresh = true)
+      AppScreen.ZFW -> zfwViewModel?.reset()
+      AppScreen.ELECTRICITY -> Unit
+      AppScreen.YGDK_HOME,
       AppScreen.YGDK_FORM -> ygdkViewModel?.ensureLoaded(forceRefresh = true)
       else -> Unit
     }
@@ -766,11 +766,11 @@ fun MainAppScreen(
         AppScreen.LIBBOOK_HOME -> "图书馆座位"
         AppScreen.LIBBOOK_RESERVE -> "预约座位"
         AppScreen.LIBBOOK_BOOKINGS -> "我的座位预约"
-         AppScreen.CARD -> "校园卡"
-         AppScreen.NETWORK -> "校园网"
-         AppScreen.ZFW -> "校园网充值"
-         AppScreen.ELECTRICITY -> "电费充值"
-         AppScreen.YGDK_HOME -> "阳光打卡"
+        AppScreen.CARD -> "校园卡"
+        AppScreen.NETWORK -> "校园网"
+        AppScreen.ZFW -> "校园网充值"
+        AppScreen.ELECTRICITY -> "电费充值"
+        AppScreen.YGDK_HOME -> "阳光打卡"
         AppScreen.YGDK_FORM -> "新增打卡"
       }
 
@@ -1032,7 +1032,8 @@ fun MainAppScreen(
               }
           AppScreen.CGYY_ORDERS -> cgyyViewModel?.let { CgyyOrdersScreen(viewModel = it) }
           AppScreen.CGYY_LOCK_CODE -> cgyyViewModel?.let { CgyyLockCodeScreen(viewModel = it) }
-          AppScreen.CGYY_WEBVIEW_RESERVE -> CgyyWebViewReserveScreen(onBackClick = { navigateBack() })
+          AppScreen.CGYY_WEBVIEW_RESERVE ->
+              CgyyWebViewReserveScreen(onBackClick = { navigateBack() })
           AppScreen.EVALUATION -> evaluationViewModel?.let { EvaluationScreen(viewModel = it) }
           AppScreen.YGDK_HOME ->
               ygdkViewModel?.let {
@@ -1131,7 +1132,7 @@ fun MainAppScreen(
                     onClearPendingPay = { viewModel.clearPendingPay() },
                 )
               }
-           AppScreen.NETWORK ->
+          AppScreen.NETWORK ->
               networkViewModel?.let { viewModel ->
                 NetworkScreen(
                     uiState = networkUiState,
@@ -1139,26 +1140,26 @@ fun MainAppScreen(
                     onRetry = { viewModel.refresh() },
                 )
               }
-               AppScreen.ZFW ->
-               zfwViewModel?.let { viewModel ->
-                 ZfwScreen(
-                     uiState = zfwUiState,
-                     onUsernameChange = viewModel::onUsernameChange,
-                     onPasswordChange = viewModel::onPasswordChange,
-                     onCaptchaChange = viewModel::onCaptchaChange,
-                     onSmsCodeChange = viewModel::onSmsCodeChange,
-                     onLoginClick = viewModel::login,
-                     onSubmitSmsClick = viewModel::submitSms,
-                     onRefreshCaptchaClick = viewModel::refreshCaptcha,
-                     onResetClick = viewModel::reset,
-                     onAmountChange = viewModel::onAmountChange,
-                     onPayCaptchaChange = viewModel::onPayCaptchaChange,
-                     onRefreshPayCaptchaClick = viewModel::refreshPayCaptcha,
-                     onSubmitPayClick = viewModel::submitPay,
-                     onDismissQrcode = viewModel::dismissQrcode,
-                 )
-               }
-           AppScreen.ELECTRICITY ->
+          AppScreen.ZFW ->
+              zfwViewModel?.let { viewModel ->
+                ZfwScreen(
+                    uiState = zfwUiState,
+                    onUsernameChange = viewModel::onUsernameChange,
+                    onPasswordChange = viewModel::onPasswordChange,
+                    onCaptchaChange = viewModel::onCaptchaChange,
+                    onSmsCodeChange = viewModel::onSmsCodeChange,
+                    onLoginClick = viewModel::login,
+                    onSubmitSmsClick = viewModel::submitSms,
+                    onRefreshCaptchaClick = viewModel::refreshCaptcha,
+                    onResetClick = viewModel::reset,
+                    onAmountChange = viewModel::onAmountChange,
+                    onPayCaptchaChange = viewModel::onPayCaptchaChange,
+                    onRefreshPayCaptchaClick = viewModel::refreshPayCaptcha,
+                    onSubmitPayClick = viewModel::submitPay,
+                    onDismissQrcode = viewModel::dismissQrcode,
+                )
+              }
+          AppScreen.ELECTRICITY ->
               electricityViewModel?.let { viewModel ->
                 ElectricityScreen(
                     uiState = electricityUiState,
@@ -1213,13 +1214,13 @@ fun MainAppScreen(
                   AppScreen.JUDGE_ASSIGNMENT_DETAIL,
                   AppScreen.LIBBOOK_HOME,
                   AppScreen.LIBBOOK_RESERVE,
-                   AppScreen.LIBBOOK_BOOKINGS,
-                   AppScreen.CARD,
-                   AppScreen.NETWORK,
-                   AppScreen.ZFW,
-                   AppScreen.ELECTRICITY,
-               )
-       ) {
+                  AppScreen.LIBBOOK_BOOKINGS,
+                  AppScreen.CARD,
+                  AppScreen.NETWORK,
+                  AppScreen.ZFW,
+                  AppScreen.ELECTRICITY,
+              )
+      ) {
         BottomNavigation(
             currentTab = selectedBottomTab,
             onTabSelected = { tab ->

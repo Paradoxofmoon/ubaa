@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cn.edu.ubaa.api.feature.CardApi
 import cn.edu.ubaa.api.feature.CardPayWay
-import cn.edu.ubaa.api.feature.CardRechargeResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,8 +95,7 @@ class CardViewModel(
       cardApi
           .getRechargePayWays()
           .onSuccess { ways ->
-            _state.value =
-                _state.value.copy(isLoadingPayWays = false, payWays = ways)
+            _state.value = _state.value.copy(isLoadingPayWays = false, payWays = ways)
           }
           .onFailure { error ->
             _state.value =
@@ -125,7 +123,13 @@ class CardViewModel(
       _state.value = _state.value.copy(error = "充值金额需在 1~90000 元之间")
       return
     }
-    _state.value = _state.value.copy(isRecharging = true, error = null, pendingCashierUrl = null, pendingChannel = null)
+    _state.value =
+        _state.value.copy(
+            isRecharging = true,
+            error = null,
+            pendingCashierUrl = null,
+            pendingChannel = null,
+        )
     viewModelScope.launch {
       cardApi
           .beginRecharge(amount, payWayId)
@@ -154,7 +158,8 @@ class CardViewModel(
   /** 依据 payWayId 推断支付渠道（微信=5acada61..., 支付宝=5acada60..., 数字人民币=ecpay...）。 */
   private fun channelOf(payWayId: String): String =
       when {
-        payWayId.startsWith("5acada61") || payWayId.contains("wx") || payWayId.contains("weixin") -> "wx"
+        payWayId.startsWith("5acada61") || payWayId.contains("wx") || payWayId.contains("weixin") ->
+            "wx"
         payWayId.startsWith("5acada60") || payWayId.contains("ali") -> "ali"
         else -> "wx"
       }

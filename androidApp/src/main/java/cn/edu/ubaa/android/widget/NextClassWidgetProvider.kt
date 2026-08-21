@@ -10,10 +10,7 @@ import android.widget.RemoteViews
 import cn.edu.ubaa.android.R
 import cn.edu.ubaa.runtime.ScheduleSnapshotBridge
 
-/**
- * 桌面小组件：显示今日下节课(+再下节课)内容与剩余时间。
- * 数据来自 App 同步课表时写入的本地快照(shared 的 ScheduleSnapshotStore)。
- */
+/** 桌面小组件：显示今日下节课(+再下节课)内容与剩余时间。 数据来自 App 同步课表时写入的本地快照(shared 的 ScheduleSnapshotStore)。 */
 class NextClassWidgetProvider : AppWidgetProvider() {
 
   companion object {
@@ -22,9 +19,7 @@ class NextClassWidgetProvider : AppWidgetProvider() {
     /** 渲染并更新小组件。供 onUpdate 与 WorkManager 周期刷新调用。 */
     fun updateAll(context: Context) {
       val manager = AppWidgetManager.getInstance(context)
-      val ids =
-          manager.getAppWidgetIds(
-              ComponentName(context, NextClassWidgetProvider::class.java))
+      val ids = manager.getAppWidgetIds(ComponentName(context, NextClassWidgetProvider::class.java))
       if (ids.isEmpty()) return
       val views = buildRemoteViews(context)
       ids.forEach { manager.updateAppWidget(it, views) }
@@ -33,13 +28,18 @@ class NextClassWidgetProvider : AppWidgetProvider() {
     /** 启动周期刷新(WorkManager, 最短15分钟)。首次添加 widget 时调用，幂等。 */
     fun ensurePeriodicRefresh(context: Context) {
       val request =
-          androidx.work.PeriodicWorkRequestBuilder<NextClassRefreshWorker>(15, java.util.concurrent.TimeUnit.MINUTES)
+          androidx.work
+              .PeriodicWorkRequestBuilder<NextClassRefreshWorker>(
+                  15,
+                  java.util.concurrent.TimeUnit.MINUTES,
+              )
               .build()
       androidx.work.WorkManager.getInstance(context)
           .enqueueUniquePeriodicWork(
               "next_class_widget_refresh",
               androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-              request)
+              request,
+          )
     }
 
     /**
@@ -56,8 +56,11 @@ class NextClassWidgetProvider : AppWidgetProvider() {
           Intent(context, NextClassWidgetProvider::class.java).setAction(ACTION_REFRESH)
       val pi =
           PendingIntent.getBroadcast(
-              context, 0, refreshIntent,
-              PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+              context,
+              0,
+              refreshIntent,
+              PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+          )
       views.setOnClickPendingIntent(R.id.widget_root, pi)
 
       val today = ScheduleSnapshotBridge.snapshotDate()
@@ -105,8 +108,8 @@ class NextClassWidgetProvider : AppWidgetProvider() {
       views.setTextViewText(titleId, cv.name)
       val timeStr = "${cv.begin} - ${cv.end}"
       val countdown = describe(cv.minutesUntil)
-      val meta = listOfNotNull(cv.place?.takeIf { it.isNotBlank() }, timeStr, countdown)
-          .joinToString("  ")
+      val meta =
+          listOfNotNull(cv.place?.takeIf { it.isNotBlank() }, timeStr, countdown).joinToString("  ")
       views.setTextViewText(metaId, meta)
     }
 
@@ -123,7 +126,9 @@ class NextClassWidgetProvider : AppWidgetProvider() {
 
     private fun setRowVisibility(views: RemoteViews, rowId: Int, visible: Boolean) {
       views.setViewVisibility(
-          rowId, if (visible) android.view.View.VISIBLE else android.view.View.GONE)
+          rowId,
+          if (visible) android.view.View.VISIBLE else android.view.View.GONE,
+      )
     }
   }
 

@@ -43,7 +43,8 @@ data class ElectricityUiState(
     // ---- 公共 ----
     val error: String? = null,
 ) {
-  val hasPendingOrder: Boolean get() = meterInfo?.payUrl != null
+  val hasPendingOrder: Boolean
+    get() = meterInfo?.payUrl != null
 }
 
 /** 电费可选的移动端支付渠道(与校园卡一致)。 */
@@ -92,7 +93,8 @@ class ElectricityViewModel(
   }
 
   fun onCampusSelect(campus: String) {
-    val buildings = _state.value.meters.filter { it.campus == campus }.map { it.building }.distinct().sorted()
+    val buildings =
+        _state.value.meters.filter { it.campus == campus }.map { it.building }.distinct().sorted()
     _state.value =
         _state.value.copy(
             selectedCampus = campus,
@@ -110,8 +112,11 @@ class ElectricityViewModel(
   fun onBuildingSelect(building: String) {
     val s = _state.value
     val floors =
-        s.meters.filter { it.campus == s.selectedCampus && it.building == building }
-            .map { it.floor }.distinct().sorted()
+        s.meters
+            .filter { it.campus == s.selectedCampus && it.building == building }
+            .map { it.floor }
+            .distinct()
+            .sorted()
     _state.value =
         s.copy(
             selectedBuilding = building,
@@ -127,10 +132,15 @@ class ElectricityViewModel(
   fun onFloorSelect(floor: String) {
     val s = _state.value
     val rooms =
-        s.meters.filter {
-              it.campus == s.selectedCampus && it.building == s.selectedBuilding && it.floor == floor
+        s.meters
+            .filter {
+              it.campus == s.selectedCampus &&
+                  it.building == s.selectedBuilding &&
+                  it.floor == floor
             }
-            .map { it.room }.distinct().sorted()
+            .map { it.room }
+            .distinct()
+            .sorted()
     _state.value =
         s.copy(
             selectedFloor = floor,
@@ -145,11 +155,11 @@ class ElectricityViewModel(
     val s = _state.value
     val meterOptions =
         s.meters.filter {
-              it.campus == s.selectedCampus &&
-                  it.building == s.selectedBuilding &&
-                  it.floor == s.selectedFloor &&
-                  it.room == room
-            }
+          it.campus == s.selectedCampus &&
+              it.building == s.selectedBuilding &&
+              it.floor == s.selectedFloor &&
+              it.room == room
+        }
     _state.value = s.copy(selectedRoom = room, meterOptions = meterOptions, selectedMeter = null)
   }
 
@@ -210,8 +220,7 @@ class ElectricityViewModel(
                 )
           }
           .onFailure { e ->
-            _state.value =
-                _state.value.copy(isLoadingMeter = false, error = e.message ?: "查询电表失败")
+            _state.value = _state.value.copy(isLoadingMeter = false, error = e.message ?: "查询电表失败")
           }
     }
   }
@@ -224,8 +233,7 @@ class ElectricityViewModel(
     }
     val pwr = value.toIntOrNull()
     if (pwr == null) {
-      _state.value =
-          _state.value.copy(power = value, computedPower = null, computedMoney = null)
+      _state.value = _state.value.copy(power = value, computedPower = null, computedMoney = null)
       return
     }
     compute(pwr)
@@ -255,32 +263,35 @@ class ElectricityViewModel(
       return
     }
 
-    _state.value = s.copy(isSubmitting = true, error = null, pendingCashierUrl = null, pendingChannel = null)
+    _state.value =
+        s.copy(isSubmitting = true, error = null, pendingCashierUrl = null, pendingChannel = null)
     viewModelScope.launch {
       runCatching {
-        // 1. 建立 cc-pay 会话(复用校园卡同一套 CAS SSO)，避免跳出去重新登录
-        ensureCcpaySession()
-        // 2. 下单，拿到原始 payUrl(pass.cc-pay.cn/login?backUrl=...cashier?id=xxx)
-        when (val result = api.submitPay(info.id, writePower)) {
-          is ElectricityPayResult.Success -> {
-            // 3. 解析真正的收银台地址
-            val cashierUrl = extractCashierUrl(result.payUrl) ?: result.payUrl
-            cashierUrl to (payWay?.channel ?: "wx")
+            // 1. 建立 cc-pay 会话(复用校园卡同一套 CAS SSO)，避免跳出去重新登录
+            ensureCcpaySession()
+            // 2. 下单，拿到原始 payUrl(pass.cc-pay.cn/login?backUrl=...cashier?id=xxx)
+            when (val result = api.submitPay(info.id, writePower)) {
+              is ElectricityPayResult.Success -> {
+                // 3. 解析真正的收银台地址
+                val cashierUrl = extractCashierUrl(result.payUrl) ?: result.payUrl
+                cashierUrl to (payWay?.channel ?: "wx")
+              }
+              is ElectricityPayResult.Failure -> throw ElectricityException(result.message)
+            }
           }
-          is ElectricityPayResult.Failure -> throw ElectricityException(result.message)
-        }
-      }.onSuccess { (cashierUrl, channel) ->
-        _state.value =
-            _state.value.copy(
-                isSubmitting = false,
-                pendingCashierUrl = cashierUrl,
-                pendingChannel = channel,
-                error = if (cashierUrl.isBlank()) "未获取到收银台地址" else null,
-            )
-      }.onFailure { e ->
-        _state.value =
-            _state.value.copy(isSubmitting = false, error = e.message ?: "下单失败，请稍后重试")
-      }
+          .onSuccess { (cashierUrl, channel) ->
+            _state.value =
+                _state.value.copy(
+                    isSubmitting = false,
+                    pendingCashierUrl = cashierUrl,
+                    pendingChannel = channel,
+                    error = if (cashierUrl.isBlank()) "未获取到收银台地址" else null,
+                )
+          }
+          .onFailure { e ->
+            _state.value =
+                _state.value.copy(isSubmitting = false, error = e.message ?: "下单失败，请稍后重试")
+          }
     }
   }
 
@@ -308,24 +319,32 @@ class ElectricityViewModel(
   fun continuePendingPay(payWay: ElectricityPayWay? = null) {
     val url = _state.value.meterInfo?.payUrl
     if (url == null) return
-    _state.value = _state.value.copy(isSubmitting = true, error = null, pendingCashierUrl = null, pendingChannel = null)
+    _state.value =
+        _state.value.copy(
+            isSubmitting = true,
+            error = null,
+            pendingCashierUrl = null,
+            pendingChannel = null,
+        )
     viewModelScope.launch {
       runCatching {
-        // 建立 cc-pay 会话 + 解析收银台地址
-        ensureCcpaySession()
-        extractCashierUrl(url) ?: url
-      }.onSuccess { cashierUrl ->
-        _state.value =
-            _state.value.copy(
-                isSubmitting = false,
-                pendingCashierUrl = cashierUrl,
-                pendingChannel = payWay?.channel ?: "wx",
-                error = if (cashierUrl.isBlank()) "未获取到收银台地址" else null,
-            )
-      }.onFailure { e ->
-        _state.value =
-            _state.value.copy(isSubmitting = false, error = e.message ?: "继续支付失败，请稍后重试")
-      }
+            // 建立 cc-pay 会话 + 解析收银台地址
+            ensureCcpaySession()
+            extractCashierUrl(url) ?: url
+          }
+          .onSuccess { cashierUrl ->
+            _state.value =
+                _state.value.copy(
+                    isSubmitting = false,
+                    pendingCashierUrl = cashierUrl,
+                    pendingChannel = payWay?.channel ?: "wx",
+                    error = if (cashierUrl.isBlank()) "未获取到收银台地址" else null,
+                )
+          }
+          .onFailure { e ->
+            _state.value =
+                _state.value.copy(isSubmitting = false, error = e.message ?: "继续支付失败，请稍后重试")
+          }
     }
   }
 
@@ -339,9 +358,7 @@ class ElectricityViewModel(
             _state.value = _state.value.copy(meterInfo = null)
             queryMeter()
           }
-          .onFailure { e ->
-            _state.value = _state.value.copy(error = e.message ?: "取消订单失败")
-          }
+          .onFailure { e -> _state.value = _state.value.copy(error = e.message ?: "取消订单失败") }
     }
   }
 

@@ -47,7 +47,10 @@ fun ElectricityScreen(
 
   val cashierUrl = uiState.pendingCashierUrl
   val channel = uiState.pendingChannel
-  var payStatus by remember(cashierUrl) { mutableStateOf<String?>(if (cashierUrl != null) "正在拉起支付..." else null) }
+  var payStatus by
+      remember(cashierUrl) {
+        mutableStateOf<String?>(if (cashierUrl != null) "正在拉起支付..." else null)
+      }
   // 与校园卡一致的隐藏 WebView：加载真实收银台页并注入 JS 自动点支付渠道，唤起支付 App。
   if (cashierUrl != null) {
     SchemeTriggerWebView(
@@ -98,11 +101,14 @@ fun ElectricityScreen(
     // 支付唤起状态/诊断提示
     payStatus?.let { status ->
       Card(
-          modifier = Modifier
-              .align(Alignment.TopCenter)
-              .fillMaxWidth()
-              .padding(top = 16.dp, start = 12.dp, end = 12.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+          modifier =
+              Modifier.align(Alignment.TopCenter)
+                  .fillMaxWidth()
+                  .padding(top = 16.dp, start = 12.dp, end = 12.dp),
+          colors =
+              CardDefaults.cardColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer
+              ),
       ) {
         Text(
             text = status,
@@ -129,8 +135,7 @@ private fun QueryPanel(
     onRetry: () -> Unit,
 ) {
   Column(
-      modifier =
-          Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+      modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text("用电查询", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -273,8 +278,7 @@ private fun PayPanel(
 ) {
   var selectedPayWay by remember { mutableStateOf<ElectricityPayWay?>(null) }
   Column(
-      modifier =
-          Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+      modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text("电费缴费", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -285,7 +289,11 @@ private fun PayPanel(
     )
 
     uiState.error?.let { error ->
-      Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+      Text(
+          error,
+          color = MaterialTheme.colorScheme.error,
+          style = MaterialTheme.typography.bodyMedium,
+      )
     }
 
     OutlinedTextField(
@@ -307,13 +315,18 @@ private fun PayPanel(
         AssistChip(
             onClick = { onHistorySelect(num) },
             label = { Text(num) },
-            leadingIcon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) },
+            leadingIcon = {
+              Icon(
+                  Icons.Default.History,
+                  contentDescription = null,
+                  modifier = Modifier.size(16.dp),
+              )
+            },
             trailingIcon = {
               Icon(
                   Icons.Default.Close,
                   contentDescription = "删除",
-                  modifier =
-                      Modifier.size(16.dp).clickable { onHistoryRemove(num) },
+                  modifier = Modifier.size(16.dp).clickable { onHistoryRemove(num) },
               )
             },
             modifier = Modifier.fillMaxWidth(),
@@ -399,7 +412,10 @@ private fun PayPanel(
 
         Button(
             onClick = { selectedPayWay?.let(onSubmitPay) },
-            enabled = !uiState.isSubmitting && (uiState.computedPower ?: 0) >= 1 && selectedPayWay != null,
+            enabled =
+                !uiState.isSubmitting &&
+                    (uiState.computedPower ?: 0) >= 1 &&
+                    selectedPayWay != null,
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) {
           if (uiState.isSubmitting) {
@@ -457,15 +473,15 @@ private fun PayWaySelector(
     payWays.forEach { way ->
       val selected = way.channel == selectedPayWay?.channel
       Row(
-          modifier = Modifier
-              .fillMaxWidth()
-              .clip(MaterialTheme.shapes.small)
-              .background(
-                  if (selected) MaterialTheme.colorScheme.secondaryContainer
-                  else MaterialTheme.colorScheme.surfaceVariant
-              )
-              .clickable { onSelect(way) }
-              .padding(horizontal = 16.dp, vertical = 14.dp),
+          modifier =
+              Modifier.fillMaxWidth()
+                  .clip(MaterialTheme.shapes.small)
+                  .background(
+                      if (selected) MaterialTheme.colorScheme.secondaryContainer
+                      else MaterialTheme.colorScheme.surfaceVariant
+                  )
+                  .clickable { onSelect(way) }
+                  .padding(horizontal = 16.dp, vertical = 14.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
       ) {

@@ -148,11 +148,13 @@ internal data class StoredCookieRecord(
 )
 
 /**
- * 供 composeApp 的收银台 WebView 使用：从当前登录会话的 cookie 持久层提取 cc-pay 域(含子域)
- * 的 cookie，拼成可注入的 "name=value; name=value" 字符串。返回空串表示无可注入 cookie。
+ * 供 composeApp 的收银台 WebView 使用：从当前登录会话的 cookie 持久层提取 cc-pay 域(含子域) 的 cookie，拼成可注入的 "name=value;
+ * name=value" 字符串。返回空串表示无可注入 cookie。
  */
 fun buildCcpayCookieHeader(): String {
-  val mode = ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY } ?: ConnectionMode.DIRECT
+  val mode =
+      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
+          ?: ConnectionMode.DIRECT
   val records = LocalCookieStore.load(mode)
   val parts = mutableListOf<String>()
   for (record in records) {
@@ -171,12 +173,13 @@ fun buildCcpayCookieHeader(): String {
 }
 
 /**
- * 供 composeApp 的场馆(buaa cgyy) WebView 使用：从当前登录会话的 cookie 持久层提取
- * cgyy 预约相关域的 SSO cookie，返回 `(注入域名URL, "name=value")` 列表，
- * 用于向 WebView 按域注入登录态，使其免重登。
+ * 供 composeApp 的场馆(buaa cgyy) WebView 使用：从当前登录会话的 cookie 持久层提取 cgyy 预约相关域的 SSO cookie，返回 `(注入域名URL,
+ * "name=value")` 列表， 用于向 WebView 按域注入登录态，使其免重登。
  */
 fun buildBuaaEduCnDomainCookies(): List<Pair<String, String>> {
-  val mode = ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY } ?: ConnectionMode.DIRECT
+  val mode =
+      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
+          ?: ConnectionMode.DIRECT
   val records = LocalCookieStore.load(mode)
   val result = mutableListOf<Pair<String, String>>()
   // 注入目标：cgyy 站点域（WebView 实际加载 https://cgyy.buaa.edu.cn/venue/mobileReservation）
@@ -199,7 +202,6 @@ fun buildBuaaEduCnDomainCookies(): List<Pair<String, String>> {
   // 去重（同 注入域名+name）
   return result.distinctBy { it.first + "|" + it.second.substringBefore("=") }
 }
-
 
 internal class PersistentLocalCookieStorage(private val mode: ConnectionMode) : CookiesStorage {
   private val mutex = Mutex()

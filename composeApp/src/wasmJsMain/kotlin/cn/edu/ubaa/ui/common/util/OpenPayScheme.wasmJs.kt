@@ -9,8 +9,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 actual fun rememberPayOpener(): (String) -> Boolean {
   val uriHandler = LocalUriHandler.current
   return remember(uriHandler) {
-    { url: String ->
-      runCatching { uriHandler.openUri(url) }.isSuccess
-    }
+    { url: String -> runCatching { uriHandler.openUri(url) }.isSuccess }
   }
 }

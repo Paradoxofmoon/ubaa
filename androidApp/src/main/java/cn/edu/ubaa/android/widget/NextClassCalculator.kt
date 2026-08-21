@@ -16,7 +16,8 @@ data class ClassView(
 
 /** 简化时间表示：HH:mm 转自当天零点起的分钟数。 */
 internal data class TimeOfDay(val hour: Int, val minute: Int) {
-  val minutes: Int get() = hour * 60 + minute
+  val minutes: Int
+    get() = hour * 60 + minute
 
   fun toLabel(): String {
     val h = hour.toString().padStart(2, '0')
@@ -25,10 +26,7 @@ internal data class TimeOfDay(val hour: Int, val minute: Int) {
   }
 }
 
-/**
- * 从今日课表快照计算「下节课 + 再下节课」。
- * TodayClass.time 格式为 "HH:mm-HH:mm"（如 "13:50-15:30"）。
- */
+/** 从今日课表快照计算「下节课 + 再下节课」。 TodayClass.time 格式为 "HH:mm-HH:mm"（如 "13:50-15:30"）。 */
 object NextClassCalculator {
 
   /** 解析 "HH:mm" 字符串为 TimeOfDay；失败返回 null。 */
@@ -68,7 +66,8 @@ object NextClassCalculator {
     val now = nowTimeOfDay()
     val nowMin = now.minutes
     val sorted =
-        classes.mapNotNull { c -> parseRange(c.time)?.let { it to c } }
+        classes
+            .mapNotNull { c -> parseRange(c.time)?.let { it to c } }
             .filter { it.first.begin.minutes >= nowMin } // 尚未开始
             .sortedBy { it.first.begin.minutes }
             .take(2)

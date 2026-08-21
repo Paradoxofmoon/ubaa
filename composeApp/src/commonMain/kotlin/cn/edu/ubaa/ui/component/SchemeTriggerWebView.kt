@@ -10,8 +10,7 @@ import cn.edu.ubaa.api.local.buildCcpayCookieHeader
 /**
  * 可复用的「隐藏 WebView + 注入 JS 自动点支付方式」组件。
  *
- * 用不可见(1dp)的 WebView 加载真实 cc-pay 收银台页，注入 JS 自动点击用户选定的
- * 支付方式(微信/支付宝)，由收银台页自身 JS 触发 scheme 唤起支付 App。
+ * 用不可见(1dp)的 WebView 加载真实 cc-pay 收银台页，注入 JS 自动点击用户选定的 支付方式(微信/支付宝)，由收银台页自身 JS 触发 scheme 唤起支付 App。
  * 校园卡充值、电费缴费共用。
  *
  * @param cashierUrl cc-pay 收银台地址(不含登录回跳)。
@@ -47,8 +46,7 @@ fun SchemeTriggerWebView(
 
 /** 构造注入 JS：轮询等待 Angular 挂载后自动点击目标支付方式。channel: wx / ali。 */
 fun buildAutoClickScript(channel: String): String {
-  val target =
-      if (channel == "ali") "支付宝" else "微信"
+  val target = if (channel == "ali") "支付宝" else "微信"
   val classKw = if (channel == "ali") "ali" else "wx,weixin"
   return """
     (function(){
@@ -94,5 +92,6 @@ fun buildAutoClickScript(channel: String): String {
       }, 600);
       setTimeout(function(){ clearInterval(timer); }, 10000);
     })();
-  """.trimIndent()
+  """
+      .trimIndent()
 }

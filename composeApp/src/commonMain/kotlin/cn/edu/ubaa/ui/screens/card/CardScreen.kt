@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
@@ -22,9 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cn.edu.ubaa.api.feature.CardPayWay
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 
@@ -42,7 +39,10 @@ fun CardScreen(
 ) {
   val cashierUrl = uiState.pendingCashierUrl
   val channel = uiState.pendingChannel
-  var payStatus by remember(cashierUrl) { mutableStateOf<String?>(if (cashierUrl != null) "正在拉起支付..." else null) }
+  var payStatus by
+      remember(cashierUrl) {
+        mutableStateOf<String?>(if (cashierUrl != null) "正在拉起支付..." else null)
+      }
   // 用户点"确认支付"后，用不可见 WebView 加载真实收银台页(cashier.cc-pay.cn)，
   // 并注入 JS 自动点击用户选定的支付方式(微信/支付宝)，由收银台页 JS 触发 scheme 唤起支付 App。
   if (cashierUrl != null) {
@@ -55,7 +55,8 @@ fun CardScreen(
     )
   }
 
-  val pullRefreshState = rememberPullRefreshState(refreshing = uiState.isRefreshing, onRefresh = onRefresh)
+  val pullRefreshState =
+      rememberPullRefreshState(refreshing = uiState.isRefreshing, onRefresh = onRefresh)
 
   Box(modifier = modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
     LazyColumn(
@@ -89,7 +90,10 @@ fun CardScreen(
             item {
               Card(
                   modifier = Modifier.fillMaxWidth(),
-                  colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                  colors =
+                      CardDefaults.cardColors(
+                          containerColor = MaterialTheme.colorScheme.errorContainer
+                      ),
               ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -130,17 +134,22 @@ fun CardScreen(
     // 支付唤起状态/诊断提示
     payStatus?.let { status ->
       Card(
-          modifier = Modifier
-              .align(Alignment.TopCenter)
-              .fillMaxWidth()
-              .padding(top = if (uiState.isRefreshing) 64.dp else 16.dp, start = 12.dp, end = 12.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+          modifier =
+              Modifier.align(Alignment.TopCenter)
+                  .fillMaxWidth()
+                  .padding(
+                      top = if (uiState.isRefreshing) 64.dp else 16.dp,
+                      start = 12.dp,
+                      end = 12.dp,
+                  ),
+          colors =
+              CardDefaults.cardColors(
+                  containerColor = MaterialTheme.colorScheme.secondaryContainer
+              ),
       ) {
         Text(
             text = status,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
@@ -164,8 +173,15 @@ private fun RechargeSection(
         modifier = Modifier.fillMaxWidth().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(Icons.Default.AddCard, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+      Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Icon(
+            Icons.Default.AddCard,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
         Text("校园卡充值", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
       }
 
@@ -178,18 +194,26 @@ private fun RechargeSection(
           modifier = Modifier.fillMaxWidth(),
       )
 
-      Text("充值金额需在 1~90000 元之间（开放时段 04:00~23:00）",
+      Text(
+          "充值金额需在 1~90000 元之间（开放时段 04:00~23:00）",
           style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant)
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
 
       // 支付方式
       if (uiState.isLoadingPayWays) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
           CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
           Text("加载支付方式...", style = MaterialTheme.typography.bodySmall)
         }
       } else if (uiState.payWays.isEmpty()) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
           Text("选择支付方式", style = MaterialTheme.typography.bodySmall)
           TextButton(onClick = onLoadPayWays) { Text("加载") }
         }
@@ -233,19 +257,25 @@ private fun FlowRowForPayWays(
     payWays.forEach { way ->
       val selected = way.id == selectedPayWay
       Row(
-          modifier = Modifier
-              .fillMaxWidth()
-              .clip(MaterialTheme.shapes.small)
-              .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-              .clickable { onSelect(way.id) }
-              .padding(horizontal = 16.dp, vertical = 14.dp),
+          modifier =
+              Modifier.fillMaxWidth()
+                  .clip(MaterialTheme.shapes.small)
+                  .background(
+                      if (selected) MaterialTheme.colorScheme.secondaryContainer
+                      else MaterialTheme.colorScheme.surfaceVariant
+                  )
+                  .clickable { onSelect(way.id) }
+                  .padding(horizontal = 16.dp, vertical = 14.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         Text(way.text.ifBlank { way.name }, style = MaterialTheme.typography.bodyLarge)
         if (selected) {
-          Icon(Icons.Default.CheckCircle, contentDescription = "已选择",
-              tint = MaterialTheme.colorScheme.primary)
+          Icon(
+              Icons.Default.CheckCircle,
+              contentDescription = "已选择",
+              tint = MaterialTheme.colorScheme.primary,
+          )
         }
       }
     }

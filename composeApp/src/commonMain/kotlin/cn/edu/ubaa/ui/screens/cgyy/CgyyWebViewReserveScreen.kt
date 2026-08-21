@@ -36,9 +36,8 @@ private const val mobileChromeUserAgent =
 /**
  * 页面加载后注入的「页面内部状态报告」脚本。
  *
- * 周期性通过 console.error('PAYDEBUG ...') 上报页面关键状态（挂载点、document.title、
- * body 文本长度、appMethod 等），App 侧 onConsoleMessage 捕获 PAYDEBUG 后显示在诊断横幅，
- * 用于定位 WebView 内页面渲染到哪一步（尤其是「只闪标题就空白」的场景）。
+ * 周期性通过 console.error('PAYDEBUG ...') 上报页面关键状态（挂载点、document.title、 body 文本长度、appMethod 等），App 侧
+ * onConsoleMessage 捕获 PAYDEBUG 后显示在诊断横幅， 用于定位 WebView 内页面渲染到哪一步（尤其是「只闪标题就空白」的场景）。
  */
 private val cgyyDiagnosticsJs =
     """
@@ -76,17 +75,16 @@ private val cgyyDiagnosticsJs =
         report('rej', String(e.reason && e.reason.message || e.reason));
       });
     })();
-    """.trimIndent()
+    """
+        .trimIndent()
 
 /**
  * 体育场馆网页预约屏（方案 A1）。
  *
- * 先静默触发一次运动场(cgyy venue-server)登录，把 `sso_buaa_token` + cgyy 会话
- * cookie 种进 LocalCookieStore；再渲染 WebView 加载官方网页预约页并注入这些 cookie，
- * 让用户在网页内完成 时段选择 + 点选验证码 + 下单 + 同伴 + 支付。
+ * 先静默触发一次运动场(cgyy venue-server)登录，把 `sso_buaa_token` + cgyy 会话 cookie 种进 LocalCookieStore；再渲染
+ * WebView 加载官方网页预约页并注入这些 cookie， 让用户在网页内完成 时段选择 + 点选验证码 + 下单 + 同伴 + 支付。
  *
- * 不注入 cookie 直接打开会在手机上遇到「返回数据格式不正确 / 一直加载」——
- * 因为 cgyy 场馆数据接口要求已登录会话。
+ * 不注入 cookie 直接打开会在手机上遇到「返回数据格式不正确 / 一直加载」—— 因为 cgyy 场馆数据接口要求已登录会话。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,8 +1,8 @@
 package cn.edu.ubaa.ui.screens.sport
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,8 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
 import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
-import cn.edu.ubaa.model.dto.CgyySpaceAvailabilityDto
 import cn.edu.ubaa.model.dto.CgyySlotStatusDto
+import cn.edu.ubaa.model.dto.CgyySpaceAvailabilityDto
 import cn.edu.ubaa.model.dto.CgyyTimeSlotDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
@@ -53,7 +53,11 @@ fun SportScreen(
               horizontalAlignment = Alignment.CenterHorizontally,
               verticalArrangement = Arrangement.Center,
           ) {
-            Text(initialError, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+            Text(
+                initialError,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+            )
             Spacer(Modifier.height(12.dp))
             Button(onClick = viewModel::loadInitialData) { Text("重试") }
           }
@@ -81,7 +85,11 @@ fun SportScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                  Text(dayInfoError, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                  Text(
+                      dayInfoError,
+                      color = MaterialTheme.colorScheme.error,
+                      textAlign = TextAlign.Center,
+                  )
                   Spacer(Modifier.height(8.dp))
                   Button(onClick = viewModel::refreshReserveData) { Text("重试") }
                 }
@@ -108,7 +116,8 @@ fun SportScreen(
               uiState.selections.sumOf { sel ->
                 info.spaces
                     .firstOrNull { it.spaceId == sel.spaceId }
-                    ?.slots?.firstOrNull { it.timeId == sel.timeId }
+                    ?.slots
+                    ?.firstOrNull { it.timeId == sel.timeId }
                     ?.orderFee ?: 0.0
               }
             } ?: 0.0
@@ -170,7 +179,9 @@ private fun SportDateSelector(
   if (dates.isEmpty()) return
   Row(
       modifier =
-          Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+          Modifier.fillMaxWidth()
+              .horizontalScroll(rememberScrollState())
+              .padding(horizontal = 12.dp),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     dates.forEach { date ->
@@ -199,7 +210,9 @@ private fun SportTimeGrid(
     Row(modifier = Modifier.fillMaxWidth().horizontalScroll(headerScroll)) {
       Box(
           modifier =
-              Modifier.width(70.dp).height(36.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+              Modifier.width(70.dp)
+                  .height(36.dp)
+                  .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,
       ) {
         Text("场地", fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -207,7 +220,9 @@ private fun SportTimeGrid(
       timeSlots.forEach { slot ->
         Box(
             modifier =
-                Modifier.width(56.dp).height(36.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+                Modifier.width(56.dp)
+                    .height(36.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
           Text(slot.beginTime, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -238,7 +253,9 @@ private fun SportSpaceRow(
   Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
     Box(
         modifier =
-            Modifier.width(70.dp).height(44.dp).border(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+            Modifier.width(70.dp)
+                .height(44.dp)
+                .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         contentAlignment = Alignment.Center,
     ) {
       Text(
@@ -295,9 +312,7 @@ private fun SportSlotCell(
               .height(44.dp)
               .background(bg)
               .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-              .then(
-                  if (clickable) Modifier.clickable(onClick = onClick) else Modifier
-              ),
+              .then(if (clickable) Modifier.clickable(onClick = onClick) else Modifier),
       contentAlignment = Alignment.Center,
   ) {
     Text(text, fontSize = 10.sp, color = textColor, textAlign = TextAlign.Center)

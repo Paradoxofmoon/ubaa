@@ -69,25 +69,18 @@ class CardApi(
   }
 }
 
-internal class RelayCardApiBackend(
-    private val apiClient: ApiClient = ApiClientProvider.shared
-) : CardApiBackend {
+internal class RelayCardApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
+    CardApiBackend {
   override suspend fun getBalance(): Result<CardBalanceData> {
     // TODO: 实现 SERVER_RELAY 模式下的一卡通余额查询中继接口
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下一卡通余额查询尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下一卡通余额查询尚未实现"))
   }
 
   override suspend fun getRechargePayWays(): Result<List<CardPayWay>> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园卡充值支付方式查询尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园卡充值支付方式查询尚未实现"))
   }
 
   override suspend fun beginRecharge(amount: String, payWayId: String): Result<CardRechargeResult> {
-    return Result.failure(
-        NotImplementedError("SERVER_RELAY 模式下校园卡充值尚未实现")
-    )
+    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园卡充值尚未实现"))
   }
 }
