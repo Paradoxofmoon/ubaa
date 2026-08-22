@@ -21,7 +21,6 @@ fun CgyyHomeScreen(
     onReserveClick: () -> Unit,
     onOrdersClick: () -> Unit,
     onLockCodeClick: () -> Unit,
-    onWebReserveClick: () -> Unit,
     venueLabel: String = "研讨室",
 ) {
   Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -54,14 +53,6 @@ fun CgyyHomeScreen(
             description = "查看门锁密码接口原始返回值",
             icon = Icons.Default.Lock,
             onClick = onLockCodeClick,
-        )
-      }
-      item {
-        BykcFeatureCard(
-            title = "网页预约场馆",
-            description = "进入网页完成完整预约（含支付）",
-            icon = Icons.Default.DateRange,
-            onClick = onWebReserveClick,
         )
       }
     }

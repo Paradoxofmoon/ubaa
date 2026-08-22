@@ -892,6 +892,7 @@ fun MainAppScreen(
           AppScreen.ADVANCED ->
               AdvancedFeaturesScreen(
                   onCgyyClick = { navigateTo(AppScreen.CGYY_HOME) },
+                  onVenueClick = { navigateTo(AppScreen.CGYY_WEBVIEW_RESERVE) },
                   onEvaluationClick = { navigateTo(AppScreen.EVALUATION) },
                   onYgdkClick = { navigateTo(AppScreen.YGDK_HOME) },
                   gridState = advancedGridState,
@@ -1013,7 +1014,6 @@ fun MainAppScreen(
                     navigateTo(AppScreen.CGYY_ORDERS)
                   },
                   onLockCodeClick = { navigateTo(AppScreen.CGYY_LOCK_CODE) },
-                  onWebReserveClick = { navigateTo(AppScreen.CGYY_WEBVIEW_RESERVE) },
               )
           AppScreen.CGYY_RESERVE_PICKER ->
               cgyyViewModel?.let {
