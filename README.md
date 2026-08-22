@@ -170,18 +170,48 @@ cgyy 页面 meta viewport：`width=device-width,initial-scale=1,maximum-scale=1,
 
 ---
 
-## 三、已知其他问题
+## 三、新功能开发规范
+
+> 目标：后续新功能**不碰上游 7 层抽象**、**复用公共组件**（轮子不重复造）。上游 UBAA 原版代码复杂度高，一律当黑盒——不依赖、不修改其逻辑，避免引入 bug。
+
+### 铁律（必须遵守）
+1. **禁止触碰上游 7 层抽象**：不修改、不依赖 ServiceRegistry / ApiFactory / Repository / 核心 ViewModel 等原版数据链；对原版代码当黑盒。
+2. **自包含**：新功能 = 自己的数据层 + 状态层 + UI 层（照 electricity / cgyy 的模式）：
+   - 数据层：`*Api`（放 `shared/.../api/local/` 或屏目录）
+   - 状态层：`*ViewModel`（`UiState` + `viewModelScope`）
+   - UI 层：`*Screen`（无状态 Composable + 复用公共组件）
+3. **必须复用公共组件**（禁止重复造轮子）：
+
+| 场景 | 用哪个 |
+|---|---|
+| 金额显示 | `ui/common/util/Money.kt` → `formatMoney(...)` |
+| 内嵌网页屏 | `ui/common/components/WebViewContainer.kt` + `ui/component/InAppWebView.kt` |
+| 支付跳转 | `ui/component/SchemeTriggerWebView.kt`（不要再手写自动点支付脚本） |
+| 加载 / 错误 / 空态 | `ui/common/components/StateContainer.kt` |
+| 顶栏 / 导航 | `ui/common/components/AppTopBar.kt` 及统一外壳 |
+
+4. **UI 口径统一**：配色沿用现有功能；间距 / 圆角一律用 `ui/theme/Dimens.kt` 常量（`Dimens.Spacing*` / `Dimens.Radius*`），不写死散值。
+5. **提交前自查清单**：
+   - [ ] 未触碰上游 7 层抽象（确认无 ServiceRegistry / ApiFactory 引用）
+   - [ ] 公共组件已复用（尤其支付跳转 / WebView / 三态 / 金额）
+   - [ ] 间距圆角用 `Dimens` 常量
+   - [ ] 编译通过（`./gradlew :androidApp:assembleDebug`）
+   - [ ] 装包实机验证关键流程
+
+---
+
+## 四、已知其他问题
 
 - 校园网流量页面解析与实际结构不匹配（数据展示不正确）
 - 校园网充值登录后 WebView 显示已登录充值页，风格与原生不同（后续可逆向充值 API 改原生）
 - 启动时 CAS 登录流程较慢
 
-## 四、调试辅助
+## 五、调试辅助
 
 - **DebugFileSink**：写调试 HTML/文本到 app cache `ubaa_debug/`，`adb pull /data/user/0/cn.edu.ubaa/cache/ubaa_debug/`
 - **PlatformLog**：Android 用 `Log.e`（华为设备会过滤 D 级）
 
-## 五、环境 / 构建
+## 六、环境 / 构建
 
 - JDK 21 + Android SDK；Gradle 走腾讯镜像、Maven 走阿里云镜像
 - release 签名配置读 `local.properties` 或环境变量 `SIGNING_KEY/SIGNING_STORE_PASSWORD/SIGNING_KEY_ALIAS/SIGNING_KEY_PASSWORD`
