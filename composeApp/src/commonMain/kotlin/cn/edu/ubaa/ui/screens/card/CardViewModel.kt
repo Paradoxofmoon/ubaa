@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cn.edu.ubaa.api.feature.CardApi
 import cn.edu.ubaa.api.feature.CardPayWay
+import cn.edu.ubaa.ui.common.util.formatMoney
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,7 +71,7 @@ class CardViewModel(
                 _state.value.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    balance = formatMoney(data.balance),
+                    balance = "¥ ${formatMoney(data.balance.toDoubleOrNull() ?: 0.0)}",
                     error = null,
                 )
           }
@@ -170,14 +171,3 @@ class CardViewModel(
   }
 }
 
-private fun formatMoney(amount: String): String {
-  val value = amount.toDoubleOrNull() ?: 0.0
-  return "¥ ${formatTwoDecimals(value)}"
-}
-
-private fun formatTwoDecimals(value: Double): String {
-  val scaled = (value * 100).toLong()
-  val whole = scaled / 100
-  val fraction = kotlin.math.abs(scaled % 100)
-  return "$whole.${fraction.toString().padStart(2, '0')}"
-}

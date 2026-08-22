@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.common.util.formatMoney
 
 /** 电费购电原生 UI（无状态）。 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -498,8 +499,3 @@ private fun PayWaySelector(
   }
 }
 
-/** 跨平台金额格式化：固定两位小数（iOS/JS 无 java.lang.String.format，不能用 "%.2f".format）。 */
-private fun formatMoney(value: Double): String {
-  val cents = kotlin.math.round(value * 100).toLong()
-  return "${cents / 100}.${(cents % 100).toString().padStart(2, '0')}"
-}
