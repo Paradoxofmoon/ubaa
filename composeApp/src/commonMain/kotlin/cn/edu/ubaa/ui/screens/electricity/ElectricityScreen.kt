@@ -18,8 +18,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 import cn.edu.ubaa.ui.common.util.formatMoney
+import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 
 /** 电费购电原生 UI（无状态）。 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -498,4 +498,3 @@ private fun PayWaySelector(
     }
   }
 }
-

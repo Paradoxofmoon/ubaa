@@ -19,8 +19,7 @@ import androidx.compose.ui.Modifier
 /**
  * 统一的内嵌网页（WebView）屏外壳：顶栏 + 加载/错误三态 + 内容区。
  *
- * 新的 WebView 功能直接复用（内容通常放 [cn.edu.ubaa.ui.component.InAppWebView]），
- * 不必再每次手写顶栏和加载/错误态。
+ * 新的 WebView 功能直接复用（内容通常放 [cn.edu.ubaa.ui.component.InAppWebView]）， 不必再每次手写顶栏和加载/错误态。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
