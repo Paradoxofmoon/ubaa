@@ -69,6 +69,7 @@ internal fun userFacingMessageForCode(code: String?, status: HttpStatusCode): St
     "bykc_error" -> "博雅课程服务暂时不可用，请稍后重试"
     "bykc_timeout" -> "博雅课程服务响应超时，请稍后重试"
     "cgyy_error" -> "研讨室服务暂时不可用，请稍后重试"
+    "cgyy_venue_error" -> "场馆预约服务暂时不可用，请稍后重试"
     "cgyy_timeout" -> "研讨室服务响应超时，请稍后重试"
     "reservation_invalid",
     "reservation_token_missing" -> "预约信息已失效，请刷新后重试"

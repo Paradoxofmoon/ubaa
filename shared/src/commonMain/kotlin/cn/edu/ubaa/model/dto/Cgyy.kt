@@ -21,6 +21,8 @@ data class CgyyVenueSiteDto(
     val openStartDate: String? = null,
     val openEndDate: String? = null,
     val isSupportReservation: Boolean? = null,
+    val venueTypeStr: String? = null,
+    val sportType: Int? = null,
 )
 
 @Serializable data class CgyyPurposeTypeDto(val key: Int, val name: String)
@@ -136,6 +138,44 @@ data class CgyyReservationSubmitResponse(
 )
 
 @Serializable data class CgyyLockCodeResponse(val rawData: JsonElement? = null)
+
+@Serializable
+data class CgyyClickWordCaptchaDto(
+    val secretKey: String,
+    val token: String,
+    val originalImageBase64: String,
+    val wordList: List<String> = emptyList(),
+)
+
+@Serializable
+data class CgyyClickWordCheckResult(
+    val captchaVerification: String,
+    val captchaToken: String,
+)
+
+@Serializable
+data class CgyySportOrderSubmitRequest(
+    val venueSiteId: Int,
+    val reservationDate: String,
+    val weekStartDate: String,
+    val reservationOrderJson: String,
+    val reservationType: Int = -1,
+    val orderPrice: Double,
+    val orderPin: String,
+    val phone: String,
+    val buddyUids: String = "",
+    val buddyIds: String = "",
+    val captchaVerification: String,
+    val captchaToken: String,
+)
+
+@Serializable
+data class CgyySportOrderSubmitResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val orderId: Long? = null,
+    val tradeNo: String? = null,
+)
 
 enum class CgyyOrderDisplayColor {
   SUCCESS,

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.edu.ubaa.api.ConnectionMode
+import cn.edu.ubaa.api.local.sportVenueDirectApi
 import cn.edu.ubaa.api.storage.BykcCourseFilterStore
 import cn.edu.ubaa.model.dto.BykcCourseDto
 import cn.edu.ubaa.model.dto.CourseClass
@@ -41,6 +42,7 @@ import cn.edu.ubaa.ui.screens.cgyy.CgyyReserveFormScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyReservePickerScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyUiState
 import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
+import cn.edu.ubaa.ui.screens.sport.SportScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyWebViewReserveScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomQueryScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomViewModel
@@ -113,6 +115,7 @@ enum class AppScreen {
   CGYY_ORDERS,
   CGYY_LOCK_CODE,
   CGYY_WEBVIEW_RESERVE,
+  SPORT_HOME,
   CLASSROOM_QUERY,
   EVALUATION,
   SPOC_ASSIGNMENTS,
@@ -166,6 +169,7 @@ fun MainAppScreen(
     )
   }
   val ygdkScreens = remember { setOf(AppScreen.YGDK_HOME, AppScreen.YGDK_FORM) }
+  val sportScreens = remember { setOf(AppScreen.SPORT_HOME) }
   val libBookScreens = remember {
     setOf(AppScreen.LIBBOOK_HOME, AppScreen.LIBBOOK_RESERVE, AppScreen.LIBBOOK_BOOKINGS)
   }
@@ -188,9 +192,12 @@ fun MainAppScreen(
       }
   var hasVisitedCgyy by remember { mutableStateOf(false) }
   var hasVisitedLibBook by remember { mutableStateOf(false) }
+  var hasVisitedSport by remember { mutableStateOf(false) }
   val shouldKeepCgyyViewModel =
       currentScreen == AppScreen.HOME || hasVisitedCgyy || currentScreen in cgyyScreens
   val shouldKeepLibBookViewModel = hasVisitedLibBook || currentScreen in libBookScreens
+  val shouldKeepSportViewModel =
+      currentScreen == AppScreen.HOME || hasVisitedSport || currentScreen in sportScreens
 
   // 初始化各模块 ViewModel
   val scheduleViewModel: ScheduleViewModel = viewModel { ScheduleViewModel() }
@@ -262,6 +269,20 @@ fun MainAppScreen(
         null
       }
   val cgyyUiState = cgyyViewModel?.uiState?.collectAsState()?.value ?: CgyyUiState()
+  // 场馆预约原生流程：固定直连运动场后端（不走 mofrp.top 中转），isSportVenue 走运动场校验
+  val sportViewModel: CgyyViewModel? =
+      if (shouldKeepSportViewModel) {
+        viewModel(key = "sport-${userData.schoolid}") {
+          CgyyViewModel(
+              cgyyApi = sportVenueDirectApi(),
+              venueLabel = "运动场地",
+              spaceLabel = "场地",
+              isSportVenue = true,
+          )
+        }
+      } else {
+        null
+      }
   val libBookViewModel: LibBookViewModel? =
       if (shouldKeepLibBookViewModel) {
         viewModel(key = "libbook-${userData.schoolid}") { LibBookViewModel() }
@@ -469,6 +490,7 @@ fun MainAppScreen(
               AppScreen.CGYY_ORDERS,
               AppScreen.CGYY_LOCK_CODE,
               AppScreen.CGYY_WEBVIEW_RESERVE,
+              AppScreen.SPORT_HOME,
               AppScreen.EVALUATION,
               AppScreen.YGDK_HOME,
               AppScreen.YGDK_FORM -> BottomNavTab.ADVANCED
@@ -514,6 +536,7 @@ fun MainAppScreen(
             AppScreen.CGYY_RESERVE_FORM,
             AppScreen.CGYY_ORDERS,
             AppScreen.CGYY_LOCK_CODE,
+            AppScreen.SPORT_HOME,
             AppScreen.EVALUATION,
             AppScreen.YGDK_HOME,
             AppScreen.YGDK_FORM -> BottomNavTab.ADVANCED
@@ -594,6 +617,9 @@ fun MainAppScreen(
     if (currentScreen in libBookScreens) {
       hasVisitedLibBook = true
     }
+    if (currentScreen in sportScreens) {
+      hasVisitedSport = true
+    }
     if (currentScreen != AppScreen.HOME) {
       homeManualRefreshPending = false
       homeManualRefreshStarted = false
@@ -644,6 +670,7 @@ fun MainAppScreen(
         cgyyViewModel?.ensureInitialDataLoaded(forceRefresh = true)
         cgyyViewModel?.ensureOrdersLoaded(forceRefresh = true)
       }
+      AppScreen.SPORT_HOME -> sportViewModel?.ensureInitialDataLoaded(forceRefresh = true)
       AppScreen.EVALUATION -> evaluationViewModel?.ensureLoaded(forceRefresh = true)
       AppScreen.SPOC_ASSIGNMENTS -> spocViewModel.ensureAssignmentsLoaded(forceRefresh = true)
       AppScreen.JUDGE_ASSIGNMENTS -> judgeViewModel.ensureAssignmentsLoaded(forceRefresh = true)
@@ -706,6 +733,7 @@ fun MainAppScreen(
         cgyyViewModel?.ensureInitialDataLoaded()
         cgyyViewModel?.ensureLockCodeLoaded(forceRefresh = true)
       }
+      AppScreen.SPORT_HOME -> sportViewModel?.ensureInitialDataLoaded()
       AppScreen.EVALUATION -> evaluationViewModel?.ensureLoaded()
       AppScreen.SPOC_ASSIGNMENTS,
       AppScreen.SPOC_ASSIGNMENT_DETAIL -> spocViewModel.ensureAssignmentsLoaded()
@@ -757,6 +785,7 @@ fun MainAppScreen(
         AppScreen.CGYY_ORDERS -> "我的预约"
         AppScreen.CGYY_LOCK_CODE -> "查看密码"
         AppScreen.CGYY_WEBVIEW_RESERVE -> "网页预约场馆"
+        AppScreen.SPORT_HOME -> "场馆预约"
         AppScreen.CLASSROOM_QUERY -> "空教室查询"
         AppScreen.EVALUATION -> "自动评教"
         AppScreen.SPOC_ASSIGNMENTS -> "SPOC作业"
@@ -892,7 +921,7 @@ fun MainAppScreen(
           AppScreen.ADVANCED ->
               AdvancedFeaturesScreen(
                   onCgyyClick = { navigateTo(AppScreen.CGYY_HOME) },
-                  onVenueClick = { navigateTo(AppScreen.CGYY_WEBVIEW_RESERVE) },
+                  onVenueClick = { navigateTo(AppScreen.SPORT_HOME) },
                   onEvaluationClick = { navigateTo(AppScreen.EVALUATION) },
                   onYgdkClick = { navigateTo(AppScreen.YGDK_HOME) },
                   gridState = advancedGridState,
@@ -1034,6 +1063,14 @@ fun MainAppScreen(
           AppScreen.CGYY_LOCK_CODE -> cgyyViewModel?.let { CgyyLockCodeScreen(viewModel = it) }
           AppScreen.CGYY_WEBVIEW_RESERVE ->
               CgyyWebViewReserveScreen(onBackClick = { navigateBack() })
+          AppScreen.SPORT_HOME ->
+              sportViewModel?.let { vm ->
+                SportScreen(
+                    viewModel = vm,
+                    onWebFallbackClick = { navigateTo(AppScreen.CGYY_WEBVIEW_RESERVE) },
+                )
+              }
+                  ?: Box(modifier = Modifier.fillMaxSize())
           AppScreen.EVALUATION -> evaluationViewModel?.let { EvaluationScreen(viewModel = it) }
           AppScreen.YGDK_HOME ->
               ygdkViewModel?.let {

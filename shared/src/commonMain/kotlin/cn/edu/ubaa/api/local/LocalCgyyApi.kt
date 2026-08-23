@@ -6,16 +6,23 @@ import cn.edu.ubaa.api.auth.toUserFacingApiException
 import cn.edu.ubaa.api.auth.userFacingMessageForCode
 import cn.edu.ubaa.api.feature.CgyyApiBackend
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
+import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
+import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrderDto
 import cn.edu.ubaa.model.dto.CgyyOrdersPageResponse
 import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitRequest
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitResponse
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitResponse
 import cn.edu.ubaa.model.dto.CgyySlotStatusDto
 import cn.edu.ubaa.model.dto.CgyySpaceAvailabilityDto
 import cn.edu.ubaa.model.dto.CgyyTimeSlotDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -75,8 +82,14 @@ internal class LocalCgyyApiBackend(
 
   override suspend fun getPurposeTypes(): Result<List<CgyyPurposeTypeDto>> =
       execute("${venueLabel}活动类型加载失败，请稍后重试") { _, client ->
-        val dynamic = runCatching { parsePurposeTypes(client.getPurposeTypesRaw()) }.getOrNull()
-        dynamic?.takeIf { it.isNotEmpty() } ?: fallbackPurposeTypes()
+        if (sportVenue) {
+          // 运动场体育分类：网页同款 code_keys sport_type 字典（羽毛球/乒乓球/游泳/台球等）
+          val dynamic = runCatching { parseSportPurposeTypes(client.getSportPurposeTypesRaw()) }.getOrNull()
+          dynamic?.takeIf { it.isNotEmpty() } ?: fallbackSportPurposeTypes()
+        } else {
+          val dynamic = runCatching { parsePurposeTypes(client.getPurposeTypesRaw()) }.getOrNull()
+          dynamic?.takeIf { it.isNotEmpty() } ?: fallbackPurposeTypes()
+        }
       }
 
   override suspend fun getDayInfo(
@@ -224,6 +237,36 @@ internal class LocalCgyyApiBackend(
         CgyyLockCodeResponse(rawData = client.getLockCode())
       }
 
+  /** 运动场点选验证码（clickWord）：图片背景 + 待点字列表。 */
+  override suspend fun getClickWordCaptcha(): Result<CgyyClickWordCaptchaDto> =
+      execute("${venueLabel}验证码获取失败，请稍后重试") { _, client ->
+        client.getClickWordCaptcha()
+      }
+
+  /** 运动场点选验证码校验，返回下单用的 captchaVerification + captchaToken。 */
+  override suspend fun checkClickWordCaptcha(
+      pointJson: String,
+      token: String,
+  ): Result<CgyyClickWordCheckResult> =
+      execute("${venueLabel}验证码校验失败，请稍后重试") { _, client ->
+        client.checkClickWordCaptcha(pointJson, token)
+      }
+
+  /** 运动场下单（venue-server order/submit，含 orderPin/验证码/订单金额等）。 */
+  override suspend fun submitSportOrder(
+      request: CgyySportOrderSubmitRequest
+  ): Result<CgyySportOrderSubmitResponse> =
+      execute("${venueLabel}预约提交失败，请稍后重试") { _, client ->
+        val envelope = client.submitSportOrder(request)
+        val data = envelope.data?.jsonObject
+        CgyySportOrderSubmitResponse(
+            success = true,
+            message = envelope.message.takeIf { it.isNotBlank() },
+            orderId = data?.get("id")?.jsonPrimitive?.contentOrNull?.toLongOrNull(),
+            tradeNo = data?.get("tradeNo")?.jsonPrimitive?.contentOrNull,
+        )
+      }
+
   private suspend fun currentClient(username: String): LocalCgyyClient =
       clientMutex.withLock {
         clientCache.getOrPut(username) {
@@ -260,8 +303,11 @@ internal class LocalCgyyApiBackend(
             if (error.code == "unauthenticated") {
               resolveLocalBusinessAuthenticationFailure("cgyy_error")
             } else {
+              // 运动场（venue-server）失败应显示"场馆预约"文案，而不是研讨室文案
+              val mappedCode =
+                  if (sportVenue && error.code == "cgyy_error") "cgyy_venue_error" else error.code
               ApiCallException(
-                  message = userFacingMessageForCode(error.code, error.status),
+                  message = userFacingMessageForCode(mappedCode, error.status),
                   status = error.status,
                   code = error.code,
               )
@@ -305,6 +351,8 @@ internal class LocalCgyyApiBackend(
           openStartDate = raw["openStartDate"]?.jsonPrimitive?.contentOrNull,
           openEndDate = raw["openEndDate"]?.jsonPrimitive?.contentOrNull,
           isSupportReservation = raw["isSupportReservation"]?.jsonPrimitive?.booleanOrNull,
+          venueTypeStr = raw["venueTypeStr"]?.jsonPrimitive?.contentOrNull,
+          sportType = raw["sportType"]?.jsonPrimitive?.intOrNull,
       )
 
   private fun mapDayInfo(
@@ -350,9 +398,7 @@ internal class LocalCgyyApiBackend(
     return CgyyDayInfoResponse(
         venueSiteId = venueSiteId,
         reservationDate = dateKey,
-        availableDates =
-            raw["ableReservationDateList"]?.jsonArray?.toStringList()
-                ?: raw["reservationDateList"]?.jsonArray?.toStringList().orEmpty(),
+        availableDates = mapAvailableDates(raw, dateKey),
         timeSlots = timeSlots,
         spaces =
             spaces.map { space ->
@@ -364,6 +410,22 @@ internal class LocalCgyyApiBackend(
         reservationTotalNum = raw["reservationTotalNum"]?.jsonPrimitive?.intOrNull,
     )
   }
+
+  /** 日期列表：优先按 advanceReservationDays（网页端 3 天即 当天+advance）生成；否则退回原生列表字段。 */
+  private fun mapAvailableDates(raw: JsonObject, baseDate: String): List<String> =
+      runCatching {
+        val advance = raw["advanceReservationDays"]?.jsonPrimitive?.intOrNull ?: 0
+        if (advance > 0 && baseDate.isNotBlank()) {
+          val start = LocalDate.parse(baseDate)
+          (0..advance).map { start.plus(it, DateTimeUnit.DAY).toString() }
+        } else {
+          raw["ableReservationDateList"]?.jsonArray?.toStringList()
+              ?: raw["reservationDateList"]?.jsonArray?.toStringList().orEmpty()
+        }
+      }.getOrElse {
+        raw["ableReservationDateList"]?.jsonArray?.toStringList()
+            ?: raw["reservationDateList"]?.jsonArray?.toStringList().orEmpty()
+      }
 
   private fun mapSlot(timeId: Int, raw: JsonObject): CgyySlotStatusDto {
     val reservationStatus = raw["reservationStatus"]?.jsonPrimitive?.intOrNull ?: 0
@@ -459,6 +521,42 @@ internal class LocalCgyyApiBackend(
           CgyyPurposeTypeDto(10, "其他特色活动类"),
       )
 
+  private fun parsePurposeTypeName(raw: JsonObject): CgyyPurposeTypeDto? =
+      raw["id"]?.jsonPrimitive?.intOrNull?.let { id ->
+        raw["codename"]?.jsonPrimitive?.contentOrNull
+            ?.takeIf(String::isNotBlank)
+            ?.let { CgyyPurposeTypeDto(id, it) }
+      }
+
+  /** 运动场（venue-server）体育分类解析：data.sport_type → {id, codename}，按网页 ordernum 排序。 */
+  private fun parseSportPurposeTypes(raw: JsonElement?): List<CgyyPurposeTypeDto> {
+    val rawSportTypes =
+        when (raw) {
+          null -> emptyList()
+          is JsonObject -> raw["sport_type"]?.jsonArray.orEmpty()
+          is JsonArray -> raw
+          else -> emptyList()
+        }
+    val withOrder =
+        rawSportTypes.mapNotNull { element ->
+          val obj = element.jsonObject
+          val dto = parsePurposeTypeName(obj) ?: return@mapNotNull null
+          val orderNum = obj["ordernum"]?.jsonPrimitive?.intOrNull
+          orderNum to dto
+        }
+    return withOrder.sortedWith(compareBy({ it.first ?: Int.MAX_VALUE }, { it.second.key }))
+        .map { it.second }
+  }
+
+  private fun fallbackSportPurposeTypes(): List<CgyyPurposeTypeDto> =
+      listOf(
+          CgyyPurposeTypeDto(156, "羽毛球"),
+          CgyyPurposeTypeDto(155, "乒乓球"),
+          CgyyPurposeTypeDto(159, "游泳"),
+          CgyyPurposeTypeDto(174, "台球"),
+          CgyyPurposeTypeDto(173, "其他"),
+      )
+
   private fun purposeTypeName(key: Int): String? =
       fallbackPurposeTypes().firstOrNull { it.key == key }?.name
 
@@ -493,16 +591,16 @@ private class LocalCgyyClient(
 
   suspend fun getVenueSites(): JsonArray {
     return if (sportVenue) {
-      // 运动场（venue-server）：场地列表走 /api/venue_sites，返回 data.content 扁平 site 数组
+      // 运动场（venue-server）：跟网页同款公开接口 venue_information → data.siteList（只含可预约站点）
       val data =
           requestJson(
                   operation = "list_sites",
                   method = HttpMethod.Get,
-                  path = "/api/venue_sites",
-                  params = mapOf("page" to -1, "size" to -1),
+                  path = "/api/front/website/venue_information",
+                  params = mapOf("isNeedSearchVenue" to 1, "resourceType" to 1),
               )
               .data
-      data.asFlatVenueSiteArray()
+      data.asSportSiteArray()
     } else {
       val params =
           if (reservationRoleId == null) {
@@ -526,6 +624,16 @@ private class LocalCgyyClient(
               operation = "list_purpose_types",
               method = HttpMethod.Get,
               path = "/api/codes",
+          )
+          .data
+
+  /** 运动场（venue-server）体育分类字典：codeKeys=campus,sport_type（羽毛球/乒乓球/游泳/台球等）。 */
+  suspend fun getSportPurposeTypesRaw(): JsonElement? =
+      requestJson(
+              operation = "list_sport_types",
+              method = HttpMethod.Get,
+              path = "/api/front/website/codes/code_keys",
+              params = mapOf("codeKeys" to "campus,sport_type"),
           )
           .data
 
@@ -659,6 +767,106 @@ private class LocalCgyyClient(
                   "isOffSchoolJoiner" to isOffSchoolJoiner,
                   "captchaVerification" to captchaVerification,
                   "token" to token,
+              ),
+      )
+
+  /** 运动场点选验证码（clickWord）：图片背景 + 待点字列表。 */
+  suspend fun getClickWordCaptcha(): CgyyClickWordCaptchaDto {
+    val now = localCgyyNowMillis()
+    val data =
+        requestJson(
+                operation = "get_click_word_captcha",
+                method = HttpMethod.Get,
+                path = "/api/captcha/get",
+                params =
+                    mapOf(
+                        "captchaType" to "clickWord",
+                        "clientUid" to "point-$now",
+                        "ts" to now,
+                    ),
+            )
+            .data
+            ?.jsonObject
+            ?: throw LocalCgyyApiException("验证码响应为空", "captcha_error", HttpStatusCode.BadGateway)
+    val success = data["success"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
+    if (!success) {
+      throw LocalCgyyApiException(
+          data["repMsg"]?.jsonPrimitive?.contentOrNull ?: "获取验证码失败",
+          "captcha_error",
+          HttpStatusCode.BadGateway,
+      )
+    }
+    val repData =
+        data["repData"]?.jsonObject
+            ?: throw LocalCgyyApiException("验证码数据缺失", "captcha_error", HttpStatusCode.BadGateway)
+    val wordList =
+        repData["wordList"]?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.contentOrNull?.takeIf(String::isNotBlank) }
+            .orEmpty()
+    return CgyyClickWordCaptchaDto(
+        secretKey = repData.requireString("secretKey"),
+        token = repData.requireString("token"),
+        originalImageBase64 = repData.requireString("originalImageBase64"),
+        wordList = wordList,
+    )
+  }
+
+  /** 运动场点选验证码校验：POST /api/captcha/check。 */
+  suspend fun checkClickWordCaptcha(pointJson: String, token: String): CgyyClickWordCheckResult {
+    val data =
+        requestJson(
+                operation = "check_click_word_captcha",
+                method = HttpMethod.Post,
+                path = "/api/captcha/check",
+                form = mapOf("captchaType" to "clickWord", "pointJson" to pointJson, "token" to token),
+            )
+            .data
+            ?.jsonObject
+            ?: throw LocalCgyyApiException("验证码校验响应为空", "captcha_error", HttpStatusCode.BadGateway)
+    val success = data["success"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
+    if (!success) {
+      throw LocalCgyyApiException(
+          data["repMsg"]?.jsonPrimitive?.contentOrNull ?: "验证码校验失败",
+          "captcha_error",
+          HttpStatusCode.BadGateway,
+      )
+    }
+    val repData = data["repData"]?.jsonObject
+    val captchaVerification =
+        data["captchaVerification"]?.jsonPrimitive?.contentOrNull
+            ?: repData?.get("captchaVerification")?.jsonPrimitive?.contentOrNull
+            ?: throw LocalCgyyApiException(
+                "验证码校验成功但缺少 captchaVerification",
+                "captcha_error",
+                HttpStatusCode.BadGateway,
+            )
+    val captchaToken =
+        data["captchaToken"]?.jsonPrimitive?.contentOrNull
+            ?: repData?.get("captchaToken")?.jsonPrimitive?.contentOrNull
+            ?: token
+    return CgyyClickWordCheckResult(captchaVerification, captchaToken)
+  }
+
+  /** 运动场下单提交：venue-server /api/reservation/order/submit（网页同款字段 + orderPin）。 */
+  suspend fun submitSportOrder(request: CgyySportOrderSubmitRequest): LocalCgyyApiEnvelope =
+      requestJson(
+          operation = "submit_sport_order",
+          method = HttpMethod.Post,
+          path = "/api/reservation/order/submit",
+          form =
+              mapOf(
+                  "venueSiteId" to request.venueSiteId,
+                  "reservationDate" to request.reservationDate,
+                  "weekStartDate" to request.weekStartDate,
+                  "reservationOrderJson" to request.reservationOrderJson,
+                  "reservationType" to request.reservationType,
+                  "orderPrice" to request.orderPrice,
+                  "orderPin" to request.orderPin,
+                  "phone" to request.phone,
+                  "buddyUids" to request.buddyUids,
+                  "buddyIds" to request.buddyIds,
+                  "captchaVerification" to request.captchaVerification,
+                  "captchaToken" to request.captchaToken,
               ),
       )
 
@@ -929,7 +1137,55 @@ private class LocalCgyyClient(
                 "campusName",
                 JsonPrimitive(site["campusName"]?.jsonPrimitive?.contentOrNull.orEmpty()),
             )
+            // 场馆类型（游泳/羽毛球/乒乓球等），用于原生"先选项目，再选场馆"的分类筛选
+            site["venueTypeStr"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank)?.let {
+              put("venueTypeStr", JsonPrimitive(it))
+            }
             // 保留"是否支持预约"标记（用于原生过滤掉不可订场的场馆）
+            val isSupportRaw = site["isSupportReservation"]
+            val isSupport =
+                when {
+                  isSupportRaw == null -> null
+                  isSupportRaw.jsonPrimitive.isString ->
+                      isSupportRaw.jsonPrimitive.content in setOf("1", "true", "True")
+                  else -> isSupportRaw.jsonPrimitive.booleanOrNull
+                }
+            if (isSupport != null) {
+              put("isSupportReservation", JsonPrimitive(isSupport))
+            }
+          }
+        }
+    )
+  }
+
+  /** 运动场（venue-server）网页公开接口 venue_information 的站点列表：data.siteList → 扁平站点。 */
+  private fun JsonElement?.asSportSiteArray(): JsonArray {
+    val siteList =
+        when (this) {
+          null -> emptyList()
+          is JsonObject -> this["siteList"]?.jsonArray.orEmpty()
+          is JsonArray -> this
+          else -> emptyList()
+        }
+    return JsonArray(
+        siteList.mapNotNull { siteElement ->
+          val site = siteElement.jsonObject
+          val venueName = site["venueName"]?.jsonPrimitive?.contentOrNull.orEmpty()
+          if (venueName !in SPORT_VENUE_NAMES) return@mapNotNull null
+          val siteId = site["siteId"]?.jsonPrimitive?.intOrNull ?: return@mapNotNull null
+          buildJsonObject {
+            put("id", JsonPrimitive(siteId))
+            put("siteName", JsonPrimitive(site["siteName"]?.jsonPrimitive?.contentOrNull.orEmpty()))
+            put("venueName", JsonPrimitive(venueName))
+            put(
+                "campusName",
+                JsonPrimitive(site["campusName"]?.jsonPrimitive?.contentOrNull.orEmpty()),
+            )
+            // 体育分类 id（羽毛球=156/乒乓球=155/游泳=159/台球=174/其他=173），用于原生分类筛选
+            site["sportType"]?.jsonPrimitive?.intOrNull?.let {
+              put("sportType", JsonPrimitive(it))
+            }
+            // 保留"是否支持预约"标记（公开列表本就可约；仍保留字段用于过滤逻辑）
             val isSupportRaw = site["isSupportReservation"]
             val isSupport =
                 when {
@@ -966,7 +1222,6 @@ private class LocalCgyyClient(
             "游泳馆",
             "室外场地",
             "小型体育场地",
-            "体育部场馆（敬请期待)",
         )
   }
 }

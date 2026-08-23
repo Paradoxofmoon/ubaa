@@ -2,6 +2,13 @@ package cn.edu.ubaa.ui.screens.sport
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -22,12 +29,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.edu.ubaa.api.local.CgyyCaptchaImageData
+import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
+import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
 import cn.edu.ubaa.model.dto.CgyySlotStatusDto
 import cn.edu.ubaa.model.dto.CgyySpaceAvailabilityDto
 import cn.edu.ubaa.model.dto.CgyyTimeSlotDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
+import cn.edu.ubaa.ui.screens.cgyy.CgyySportCaptchaPoint
 import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
 
 /** 运动场订场独立 UI（不复用研讨室审批式表单）。 */
@@ -35,13 +46,29 @@ import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
 @Composable
 fun SportScreen(
     viewModel: CgyyViewModel,
+    onWebFallbackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val initialError = uiState.initialError
   val dayInfoError = uiState.dayInfoError
 
-  Column(modifier = modifier.fillMaxSize()) {
+  Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+    if (onWebFallbackClick != null) {
+      Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+          horizontalArrangement = Arrangement.End,
+      ) {
+        TextButton(onClick = onWebFallbackClick) {
+          Text(
+              "网页版预约（兜底）",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.primary,
+          )
+        }
+      }
+    }
     when {
       uiState.isInitialLoading && uiState.sites.isEmpty() ->
           Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -62,6 +89,11 @@ fun SportScreen(
             Button(onClick = viewModel::loadInitialData) { Text("重试") }
           }
       else -> {
+        SportCategorySelector(
+            purposeTypes = uiState.purposeTypes,
+            selected = uiState.purposeType,
+            onSelect = viewModel::selectSportCategory,
+        )
         SportSiteSelector(
             sites = uiState.sites,
             selectedSiteId = uiState.selectedSiteId,
@@ -129,6 +161,59 @@ fun SportScreen(
             selectedCount = uiState.selections.size,
             isSubmitting = uiState.isSubmitting,
             onSubmit = { viewModel.submitReservation() },
+        )
+      }
+    }
+
+    uiState.clickWordCaptcha?.let { captcha ->
+      uiState.captchaImage?.let { image ->
+        SportClickWordCaptchaOverlay(
+            captcha = captcha,
+            image = image,
+            points = uiState.captchaPoints,
+            isLoading = uiState.isCaptchaLoading,
+            error = uiState.captchaError,
+            onTap = viewModel::onCaptchaTap,
+            onRefresh = viewModel::refreshClickWordCaptcha,
+            onDismiss = viewModel::dismissClickWordCaptcha,
+        )
+      }
+    }
+  }
+}
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SportCategorySelector(
+    purposeTypes: List<CgyyPurposeTypeDto>,
+    selected: Int?,
+    onSelect: (Int?) -> Unit,
+) {
+  if (purposeTypes.isEmpty()) return
+  Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+    Text(
+        "项目分类",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      FilterChip(
+          selected = selected == null,
+          onClick = { onSelect(null) },
+          label = { Text("全部") },
+      )
+      purposeTypes.forEach { type ->
+        FilterChip(
+            selected = selected == type.key,
+            onClick = { onSelect(type.key) },
+            label = { Text(type.name) },
         )
       }
     }
@@ -376,3 +461,91 @@ private fun formatFee(value: Double): String =
 
 private fun sportDateLabel(date: String): String =
     if (date.length >= 10) "${date.substring(5, 7)}/${date.substring(8, 10)}" else date
+
+@Composable
+private fun SportClickWordCaptchaOverlay(
+    captcha: CgyyClickWordCaptchaDto,
+    image: CgyyCaptchaImageData,
+    points: List<CgyySportCaptchaPoint>,
+    isLoading: Boolean,
+    error: String?,
+    onTap: (Int, Int, Int, Int) -> Unit,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+  Box(
+      modifier =
+          Modifier.fillMaxSize()
+              .background(Color(0x99000000))
+              .clickable(enabled = false) {},
+      contentAlignment = Alignment.Center,
+  ) {
+    Card(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+      Column(
+          modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+      ) {
+        Text(
+            "请按顺序点击：${captcha.wordList.joinToString("、")}",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Box(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .widthIn(max = 300.dp)
+                    .aspectRatio(image.width.toFloat() / maxOf(1, image.height))
+                    .heightIn(max = 180.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .pointerInput(image) {
+                      detectTapGestures { offset ->
+                        onTap(offset.x.toInt(), offset.y.toInt(), size.width, size.height)
+                      }
+                    },
+        ) {
+          Image(
+              bitmap = remember(image) { cgyyCaptchaImageBitmap(image) },
+              contentDescription = "点选验证码",
+              modifier = Modifier.fillMaxSize(),
+          )
+          points.forEachIndexed { index, p ->
+            Box(
+                modifier =
+                    Modifier.offset { IntOffset(p.x - 12, p.y - 12) }
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable(enabled = false) {},
+                contentAlignment = Alignment.Center,
+            ) {
+              Text(
+                  "${index + 1}",
+                  color = MaterialTheme.colorScheme.onPrimary,
+                  fontSize = 12.sp,
+              )
+            }
+          }
+        }
+        error?.let {
+          Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+        if (isLoading) {
+          Box(
+              modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+              contentAlignment = Alignment.Center,
+          ) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+          }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          TextButton(onClick = onDismiss) { Text("取消") }
+          TextButton(onClick = onRefresh) { Text("刷新") }
+        }
+      }
+    }
+  }
+}
+

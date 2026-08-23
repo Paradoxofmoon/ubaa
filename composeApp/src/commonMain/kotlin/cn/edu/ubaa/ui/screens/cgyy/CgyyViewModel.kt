@@ -3,14 +3,21 @@ package cn.edu.ubaa.ui.screens.cgyy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cn.edu.ubaa.api.feature.CgyyApi
+import cn.edu.ubaa.api.local.CgyyCaptchaImageData
+import cn.edu.ubaa.api.local.decodeCgyyCaptchaImage
+import cn.edu.ubaa.api.local.encryptCgyyClickWordPointJson
 import cn.edu.ubaa.api.storage.CgyyReservationFormStore
 import cn.edu.ubaa.api.storage.StoredCgyyReservationForm
+import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
+import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrdersPageResponse
 import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitRequest
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitResponse
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import kotlin.math.abs
 import kotlin.time.Clock
@@ -19,7 +26,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 
 data class CgyyReservationSummary(
@@ -29,6 +39,9 @@ data class CgyyReservationSummary(
     val slotLabels: List<String>,
 )
 
+/** 运动场点选验证码：用户按 wordList 顺序点选的显示坐标（未缩放）。 */
+data class CgyySportCaptchaPoint(val x: Int, val y: Int)
+
 data class CgyyUiState(
     val isInitialLoading: Boolean = false,
     val isDayInfoLoading: Boolean = false,
@@ -36,6 +49,8 @@ data class CgyyUiState(
     val isOrdersLoading: Boolean = false,
     val isLockCodeLoading: Boolean = false,
     val sites: List<CgyyVenueSiteDto> = emptyList(),
+    // 运动场全量可预约站点（未按分类过滤），用于切换分类时重新过滤
+    val allSites: List<CgyyVenueSiteDto> = emptyList(),
     val purposeTypes: List<CgyyPurposeTypeDto> = emptyList(),
     val dayInfo: CgyyDayInfoResponse? = null,
     val selectedCampus: String = "",
@@ -56,10 +71,16 @@ data class CgyyUiState(
     val orders: CgyyOrdersPageResponse = CgyyOrdersPageResponse(),
     val lockCode: CgyyLockCodeResponse? = null,
     val initialError: String? = null,
-    val dayInfoError: String? = null,
+        val dayInfoError: String? = null,
     val ordersError: String? = null,
     val lockCodeError: String? = null,
     val actionMessage: String? = null,
+    val clickWordCaptcha: CgyyClickWordCaptchaDto? = null,
+    val captchaImage: CgyyCaptchaImageData? = null,
+    val captchaPoints: List<CgyySportCaptchaPoint> = emptyList(),
+    val captchaCheck: CgyyClickWordCheckResult? = null,
+    val isCaptchaLoading: Boolean = false,
+    val captchaError: String? = null,
 )
 
 @OptIn(ExperimentalTime::class)
@@ -106,22 +127,31 @@ class CgyyViewModel(
       val sites = sitesResult.getOrNull().orEmpty().filterReservable()
       val purposeTypes = purposeTypesResult.getOrNull().orEmpty()
       val currentPurposeType = _uiState.value.purposeType
-      val siteId = _uiState.value.selectedSiteId ?: sites.firstOrNull()?.id
+      val resolvedPurposeType =
+          when {
+            purposeTypes.isEmpty() -> currentPurposeType
+            currentPurposeType != null && purposeTypes.any { it.key == currentPurposeType } ->
+                currentPurposeType
+            else -> purposeTypes.firstOrNull()?.key
+          }
+      // 运动场：默认选中第一个运动分类（如羽毛球），列表只显示该分类下的可预约场馆
+      val visibleSites =
+          if (isSportVenue && resolvedPurposeType != null) {
+            sites.filter { it.sportType == resolvedPurposeType }
+          } else {
+            sites
+          }
+      val siteId = _uiState.value.selectedSiteId ?: visibleSites.firstOrNull()?.id
 
       _uiState.value =
           _uiState.value.copy(
               isInitialLoading = false,
-              sites = sites,
+              sites = visibleSites,
+              allSites = sites,
               selectedCampus = _uiState.value.selectedCampus.ifBlank { ALL_CAMPUSES },
               purposeTypes = purposeTypes,
               selectedSiteId = siteId,
-              purposeType =
-                  when {
-                    purposeTypes.isEmpty() -> currentPurposeType
-                    currentPurposeType != null &&
-                        purposeTypes.any { it.key == currentPurposeType } -> currentPurposeType
-                    else -> purposeTypes.firstOrNull()?.key
-                  },
+              purposeType = resolvedPurposeType,
               initialError =
                   sitesResult.exceptionOrNull()?.message
                       ?: purposeTypesResult.exceptionOrNull()?.message,
@@ -239,6 +269,46 @@ class CgyyViewModel(
 
   fun updatePhone(value: String) {
     _uiState.value = _uiState.value.copy(phone = value)
+    // 电话记忆：非空时持久化，研讨室/场馆两侧共用同一个电话
+    if (value.isNotBlank()) {
+      val stored =
+          CgyyReservationFormStore.get()
+              ?: StoredCgyyReservationForm(
+                  phone = "",
+                  theme = "",
+                  purposeType = null,
+                  joinerNum = "1",
+                  activityContent = "",
+                  joiners = "",
+                  isPhilosophySocialSciences = false,
+                  isOffSchoolJoiner = false,
+              )
+      CgyyReservationFormStore.save(stored.copy(phone = value))
+    }
+  }
+
+  /** 运动场专用：按项目分类（sportType 键；null = 全部场地）从全量可预约站点过滤并刷新时段。 */
+  fun selectSportCategory(categoryKey: Int?) {
+    if (!isSportVenue) return
+    val current = _uiState.value
+    val filtered =
+        if (categoryKey == null) current.allSites
+        else current.allSites.filter { it.sportType == categoryKey }
+    val nextSiteId =
+        current.selectedSiteId?.takeIf { id -> filtered.any { it.id == id } }
+            ?: filtered.firstOrNull()?.id
+    _uiState.value =
+        current.copy(
+            purposeType = categoryKey,
+            sites = filtered,
+            selectedSiteId = nextSiteId,
+            selections = emptyList(),
+            reservationSummary = null,
+            actionMessage = null,
+        )
+    if (nextSiteId != null) {
+      loadDayInfo(nextSiteId, current.selectedDate.ifBlank { currentDateProvider() })
+    }
   }
 
   fun updateTheme(value: String) {
@@ -285,6 +355,12 @@ class CgyyViewModel(
     _uiState.value = current.copy(hasTriedSubmitReservation = true, actionMessage = null)
     if (current.selections.isEmpty()) return setActionMessage("请至少选择一个时段")
     if (current.phone.isBlank()) return setActionMessage("请填写联系电话")
+
+    if (isSportVenue) {
+      // 运动场下单：先出点选验证码，通过后再带 orderPin 提交
+      startSportCheckout()
+      return
+    }
 
     // 运动场订场：无需活动主题/内容/参与人数等审批字段
     val purposeType = current.purposeType
@@ -477,6 +553,173 @@ class CgyyViewModel(
     }
   }
 
+  /** 运动场下单第一步：加载点选验证码（clickWord）。 */
+  fun startSportCheckout() {
+    if (!isSportVenue) return
+    _uiState.value =
+        _uiState.value.copy(isCaptchaLoading = true, captchaError = null, actionMessage = null)
+    viewModelScope.launch {
+      cgyyApi
+          .getClickWordCaptcha()
+          .onSuccess { captcha ->
+            val image = runCatching { decodeCgyyCaptchaImage(captcha.originalImageBase64) }.getOrNull()
+            _uiState.value =
+                _uiState.value.copy(
+                    isCaptchaLoading = false,
+                    clickWordCaptcha = captcha,
+                    captchaImage = image,
+                    captchaPoints = emptyList(),
+                    captchaCheck = null,
+                    captchaError = null,
+                )
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(
+                    isCaptchaLoading = false,
+                    captchaError = it.message ?: "验证码加载失败",
+                    actionMessage = it.message ?: "验证码加载失败",
+                )
+          }
+    }
+  }
+
+  /** 刷新验证码（重新获取一张）。 */
+  fun refreshClickWordCaptcha() {
+    _uiState.value =
+        _uiState.value.copy(
+            clickWordCaptcha = null,
+            captchaImage = null,
+            captchaPoints = emptyList(),
+            captchaCheck = null,
+        )
+    startSportCheckout()
+  }
+
+  /** 关闭验证码面板（取消下单）。 */
+  fun dismissClickWordCaptcha() {
+    _uiState.value =
+        _uiState.value.copy(
+            clickWordCaptcha = null,
+            captchaImage = null,
+            captchaPoints = emptyList(),
+            captchaCheck = null,
+            isCaptchaLoading = false,
+            captchaError = null,
+        )
+  }
+
+  /** 用户点击验证码图片：记录显示坐标；点满 wordList 后自动校验。 */
+  fun onCaptchaTap(x: Int, y: Int, displayWidth: Int, displayHeight: Int) {
+    val captcha = _uiState.value.clickWordCaptcha ?: return
+    if (captcha.wordList.isEmpty()) return
+    if (_uiState.value.captchaPoints.size >= captcha.wordList.size) return
+    val nextPoints = _uiState.value.captchaPoints + CgyySportCaptchaPoint(x, y)
+    _uiState.value = _uiState.value.copy(captchaPoints = nextPoints, captchaError = null, actionMessage = null)
+    if (nextPoints.size >= captcha.wordList.size) {
+      verifyClickWordCaptcha(displayWidth, displayHeight)
+    }
+  }
+
+  /** 校验点选：显示坐标按原图缩放 → AES-ECB 加密 → captcha/check。 */
+  fun verifyClickWordCaptcha(displayWidth: Int, displayHeight: Int) {
+    val captcha = _uiState.value.clickWordCaptcha ?: return
+    val image = _uiState.value.captchaImage ?: return
+    if (displayWidth <= 0 || displayHeight <= 0) return
+    val pointJsonData =
+        _uiState.value.captchaPoints.joinToString(",", "[", "]") { p ->
+          val ox = (p.x.toDouble() * image.width / displayWidth).toInt()
+          val oy = (p.y.toDouble() * image.height / displayHeight).toInt()
+          "{\"x\":$ox,\"y\":$oy}"
+        }
+    val pointJson =
+        runCatching { encryptCgyyClickWordPointJson(pointJsonData, captcha.secretKey) }.getOrElse {
+          _uiState.value = _uiState.value.copy(captchaError = "验证码坐标加密失败")
+          return
+        }
+    _uiState.value = _uiState.value.copy(isCaptchaLoading = true, captchaError = null)
+    viewModelScope.launch {
+      cgyyApi
+          .checkClickWordCaptcha(pointJson, captcha.token)
+          .onSuccess { check ->
+            _uiState.value =
+                _uiState.value.copy(isCaptchaLoading = false, captchaCheck = check, captchaError = null)
+            performSportOrderSubmit()
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(
+                    isCaptchaLoading = false,
+                    captchaError = it.message ?: "验证码校验失败",
+                    captchaPoints = emptyList(),
+                )
+          }
+    }
+  }
+
+  /** 验证通过后提交场馆订单（网页同款字段 + orderPin）。 */
+  fun performSportOrderSubmit() {
+    val current = _uiState.value
+    val siteId = current.selectedSiteId ?: return
+    val dayInfo = current.dayInfo ?: return setActionMessage("可预约信息缺失，请重试")
+    val captcha = current.clickWordCaptcha ?: return
+    val check = current.captchaCheck ?: return
+    val reservationOrderJson =
+        current.selections.joinToString(",", "[", "]") { sel ->
+          buildString {
+            append("{\"spaceId\":\"${sel.spaceId}\",\"timeId\":\"${sel.timeId}\"")
+            sel.venueSpaceGroupId?.let { append(",\"venueSpaceGroupId\":\"$it\"") }
+            append("}")
+          }
+        }
+    val orderPrice =
+        current.selections.sumOf { sel ->
+          dayInfo.spaces.firstOrNull { it.spaceId == sel.spaceId }
+              ?.slots
+              ?.firstOrNull { it.timeId == sel.timeId }
+              ?.orderFee ?: 0.0
+        }
+    val request =
+        CgyySportOrderSubmitRequest(
+            venueSiteId = siteId,
+            reservationDate = current.selectedDate,
+            weekStartDate = venueMondayOfWeek(current.selectedDate),
+            reservationOrderJson = reservationOrderJson,
+            orderPrice = orderPrice,
+            orderPin = SPORT_ORDER_PIN_CONSTANT,
+            phone = current.phone,
+            captchaVerification = check.captchaVerification,
+            captchaToken = check.captchaToken,
+        )
+    _uiState.value = _uiState.value.copy(isSubmitting = true, actionMessage = null)
+    viewModelScope.launch {
+      cgyyApi
+          .submitSportOrder(request)
+          .onSuccess { result ->
+            _uiState.value =
+                _uiState.value.copy(
+                    isSubmitting = false,
+                    selections = emptyList(),
+                    reservationSummary = null,
+                    clickWordCaptcha = null,
+                    captchaImage = null,
+                    captchaPoints = emptyList(),
+                    captchaCheck = null,
+                    hasTriedSubmitReservation = false,
+                    actionMessage = "预约成功（订单号 ${result.tradeNo ?: "-"}）",
+                )
+            loadDayInfo(siteId, current.selectedDate)
+            loadOrders()
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(
+                    isSubmitting = false,
+                    actionMessage = it.message ?: "预约失败",
+                )
+          }
+    }
+  }
   private fun setActionMessage(message: String) {
     _uiState.value = _uiState.value.copy(actionMessage = message)
   }
@@ -535,6 +778,16 @@ class CgyyViewModel(
     )
   }
 }
+
+private const val SPORT_ORDER_PIN_CONSTANT =
+    "71e8441b6e2b4afaff9f6dac16a94c2e"
+
+/** 运动场下单 weekStartDate = 该日期所在周的周一（yyyy-MM-dd）。 */
+private fun venueMondayOfWeek(date: String): String =
+    runCatching {
+      val d = LocalDate.parse(date)
+      d.minus(d.dayOfWeek.ordinal - 1, DateTimeUnit.DAY).toString()
+    }.getOrDefault(date)
 
 /** 仅保留支持预约的场馆（isSupportReservation 为 null 或 true；丢弃明确 false 的）。 */
 private fun List<CgyyVenueSiteDto>.filterReservable(): List<CgyyVenueSiteDto> = filter {

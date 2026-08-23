@@ -4,6 +4,8 @@ import cn.edu.ubaa.api.ConnectionRuntime
 import cn.edu.ubaa.api.auth.ApiClientProvider
 import cn.edu.ubaa.api.auth.safeApiCall
 import cn.edu.ubaa.api.core.ApiClient
+import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
+import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrderDto
@@ -11,6 +13,8 @@ import cn.edu.ubaa.model.dto.CgyyOrdersPageResponse
 import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitRequest
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitResponse
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
+import cn.edu.ubaa.model.dto.CgyySportOrderSubmitResponse
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -37,6 +41,23 @@ interface CgyyApiBackend {
   suspend fun cancelOrder(orderId: Int): Result<CgyyReservationSubmitResponse>
 
   suspend fun getLockCode(): Result<CgyyLockCodeResponse>
+
+  /** 运动场点选验证码获取（clickWord）。默认不支持，由直连后端实现。 */
+  suspend fun getClickWordCaptcha(): Result<CgyyClickWordCaptchaDto> =
+      Result.failure(UnsupportedOperationException("clickWord captcha is not supported by this backend"))
+
+  /** 运动场点选验证码校验：pointJson = AES-ECB(点击坐标JSON, secretKey)。 */
+  suspend fun checkClickWordCaptcha(
+      pointJson: String,
+      token: String,
+  ): Result<CgyyClickWordCheckResult> =
+      Result.failure(UnsupportedOperationException("clickWord captcha is not supported by this backend"))
+
+  /** 运动场下单提交（venue-server order/submit）。默认不支持，由直连后端实现。 */
+  suspend fun submitSportOrder(
+      request: CgyySportOrderSubmitRequest
+  ): Result<CgyySportOrderSubmitResponse> =
+      Result.failure(UnsupportedOperationException("sport order submit is not supported by this backend"))
 }
 
 open class CgyyApi(
@@ -80,6 +101,23 @@ open class CgyyApi(
 
   open suspend fun getLockCode(): Result<CgyyLockCodeResponse> {
     return currentBackend().getLockCode()
+  }
+
+  open suspend fun getClickWordCaptcha(): Result<CgyyClickWordCaptchaDto> {
+    return currentBackend().getClickWordCaptcha()
+  }
+
+  open suspend fun checkClickWordCaptcha(
+      pointJson: String,
+      token: String,
+  ): Result<CgyyClickWordCheckResult> {
+    return currentBackend().checkClickWordCaptcha(pointJson, token)
+  }
+
+  open suspend fun submitSportOrder(
+      request: CgyySportOrderSubmitRequest
+  ): Result<CgyySportOrderSubmitResponse> {
+    return currentBackend().submitSportOrder(request)
   }
 }
 
