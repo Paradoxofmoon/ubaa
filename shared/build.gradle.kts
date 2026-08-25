@@ -30,13 +30,12 @@ buildkonfig {
         "VERSION",
         project.property("project.version").toString(),
     )
-    // 优先从环境变量获取 API 完整地址
+    // 优先从环境变量获取 API 完整地址；未配置时留空（更新/公告检查自动禁用）。
+    // 开源版默认不依赖任何中转服务器，自建服务端者可通过 API_ENDPOINT 环境变量启用。
     buildConfigField(
         FieldSpec.Type.STRING,
         "API_ENDPOINT",
-        env.getProperty("API_ENDPOINT")
-            ?: System.getenv("API_ENDPOINT")
-            ?: "https://ubaa.mofrp.top",
+        env.getProperty("API_ENDPOINT") ?: System.getenv("API_ENDPOINT") ?: "",
     )
   }
 }

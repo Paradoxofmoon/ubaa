@@ -10,6 +10,7 @@ import cn.edu.ubaa.api.auth.CaptchaRequiredClientException
 import cn.edu.ubaa.api.auth.UserService
 import cn.edu.ubaa.api.storage.AuthTokensStore
 import cn.edu.ubaa.api.storage.CredentialStore
+import cn.edu.ubaa.api.storage.UserDataStore
 import cn.edu.ubaa.model.dto.CaptchaInfo
 import cn.edu.ubaa.model.dto.UserData
 import cn.edu.ubaa.model.dto.UserInfo
@@ -91,13 +92,15 @@ class AuthViewModel(
       authService
           .preloadLoginState()
           .onSuccess { response ->
-            if (response.userData != null) {
+            val user = response.userData
+            if (user != null) {
               // SSO 已登录，执行自动登录逻辑
+              UserDataStore.save(user)
               _uiState.value =
                   _uiState.value.copy(
                       isPreloading = false,
                       isLoggedIn = true,
-                      userData = response.userData,
+                      userData = user,
                       accessToken = response.accessToken?.takeIf { it.isNotBlank() },
                   )
               resetUserInfoState()
@@ -161,6 +164,7 @@ class AuthViewModel(
       authService
           .login(form.username, form.password, captcha, state.execution)
           .onSuccess { loginResponse ->
+            UserDataStore.save(loginResponse.user)
             _uiState.value =
                 _uiState.value.copy(
                     isLoggedIn = true,
@@ -202,10 +206,24 @@ class AuthViewModel(
       }
 
       authService.applyStoredTokens()
-      _uiState.value = _uiState.value.copy(isLoading = true)
+      // 乐观启动：优先用本地缓存的用户信息直接进入主界面（首帧不阻塞），后台再校验会话
+      val cachedUser = UserDataStore.get()
+      if (cachedUser != null) {
+        _uiState.value =
+            _uiState.value.copy(
+                isLoggedIn = true,
+                isLoading = false,
+                userData = cachedUser,
+                accessToken = restoredAccessToken,
+            )
+        resetUserInfoState()
+      } else {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+      }
       authService
           .getAuthStatus()
           .onSuccess { status ->
+            UserDataStore.save(status.user)
             _uiState.value =
                 _uiState.value.copy(
                     isLoggedIn = true,
@@ -217,15 +235,34 @@ class AuthViewModel(
           }
           .onFailure { error ->
             _uiState.value = _uiState.value.copy(isLoading = false)
-            if (error is ApiCallException && error.code == "auth_upstream_timeout") {
-              _uiState.value = _uiState.value.copy(error = error.message)
-              return@onFailure
+            if (isAuthInvalidError(error)) {
+              // 会话确实失效（401 / 无效令牌）：清会话回登录；未乐观进入时走 SSO 预载/自动登录
+              authService.clearStoredSession()
+              UserDataStore.clear()
+              _uiState.value = _uiState.value.copy(isLoggedIn = false, userData = null)
+              if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+            } else {
+              // 瞬态错误（网络/超时/服务器 5xx）：保留会话与乐观登录态，不强制登出。
+              // 未乐观进入（无缓存）时尝试 SSO 预载恢复；已乐观进入则保持主界面，重试由各页自身处理。
+              if (!_uiState.value.isLoggedIn) {
+                if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+              }
             }
-            authService.clearStoredSession()
-            if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
           }
     }
   }
+
+  /** 是否为确凿的会话失效错误（401 或无效令牌）。其余错误（网络/超时/5xx）视为瞬态，不应清会话。 */
+  private fun isAuthInvalidError(error: Throwable): Boolean =
+      error is ApiCallException &&
+          (error.status?.value == 401 ||
+              error.code in
+                  listOf(
+                      "invalid_token",
+                      "unauthenticated",
+                      "unauthorized",
+                      "invalid_refresh_token",
+                  ))
 
   fun switchConnectionMode(mode: ConnectionMode) {
     viewModelScope.launch {
@@ -244,12 +281,14 @@ class AuthViewModel(
       authService
           .logout()
           .onSuccess {
+            UserDataStore.clear()
             resetUserInfoState()
             _uiState.value = AuthUiState()
             _loginForm.value = LoginFormState()
             preloadLoginState()
           }
           .onFailure {
+            UserDataStore.clear()
             resetUserInfoState()
             _uiState.value = AuthUiState(error = "注销完成但有警告: ${it.message}")
             preloadLoginState()
@@ -283,6 +322,7 @@ class AuthViewModel(
       authService
           .getAuthStatus()
           .onSuccess { status ->
+            UserDataStore.save(status.user)
             _uiState.value =
                 _uiState.value.copy(
                     isLoggedIn = true,
@@ -290,15 +330,15 @@ class AuthViewModel(
                 )
           }
           .onFailure { error ->
-            if (error is ApiCallException && error.code == "auth_upstream_timeout") {
-              // 网络暂时不可用，保留会话状态
-              return@onFailure
+            if (isAuthInvalidError(error)) {
+              // 会话确实失效了：清会话回登录
+              authService.clearStoredSession()
+              UserDataStore.clear()
+              resetUserInfoState()
+              _uiState.value = AuthUiState()
+              if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
             }
-            // 会话确实过期了
-            authService.clearStoredSession()
-            resetUserInfoState()
-            _uiState.value = AuthUiState()
-            if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+            // 否则是瞬态错误（网络/超时/5xx）：保留会话状态，不强制登出
           }
     }
   }

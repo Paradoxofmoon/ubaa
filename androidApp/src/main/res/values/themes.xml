@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主界面窗口主题（与现有 Light.NoActionBar 一致） -->
+    <style name="Theme.UBAA" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 启动主题：冷启动首帧前窗口显示品牌背景，避免白屏闪烁 -->
+    <style name="Theme.UBAA.Splash" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

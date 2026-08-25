@@ -122,7 +122,6 @@ enum class LoginStatsSuccessMode {
 enum class LoginStatsConnectionMode {
   DIRECT,
   WEBVPN,
-  SERVER_RELAY,
 }
 
 @Serializable

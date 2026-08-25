@@ -44,12 +44,14 @@ fun SchemeTriggerWebView(
   }
 }
 
-/** 构造注入 JS：轮询等待 Angular 挂载后自动点击目标支付方式。channel: wx / ali。 */
+/** 构造注入 JS：轮询等待 Angular 挂载后自动点击目标支付方式。channel: wx / ali。幂等（可提前/重复注入）。 */
 fun buildAutoClickScript(channel: String): String {
   val target = if (channel == "ali") "支付宝" else "微信"
   val classKw = if (channel == "ali") "ali" else "wx,weixin"
   return """
     (function(){
+      if (window.__PAY_AUTOCLICK_STARTED__) { return; }
+      window.__PAY_AUTOCLICK_STARTED__ = true;
       var target='$target';
       var classKw='$classKw';
       function isTarget(e){
@@ -88,9 +90,9 @@ fun buildAutoClickScript(channel: String): String {
         tries++;
         var done=clickAll();
         if(done){ clearInterval(timer); }
-        else if(tries>=12){ clearInterval(timer); alert('PAYDEBUG 未能自动定位支付方式'); }
-      }, 600);
-      setTimeout(function(){ clearInterval(timer); }, 10000);
+        else if(tries>=60){ clearInterval(timer); console.error('PAYDEBUG 未能自动定位支付方式'); }
+      }, 200);
+      setTimeout(function(){ clearInterval(timer); }, 12000);
     })();
   """
       .trimIndent()

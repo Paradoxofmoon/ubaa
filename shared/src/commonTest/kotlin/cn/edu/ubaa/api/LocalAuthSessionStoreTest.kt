@@ -7,7 +7,6 @@ import com.russhwolf.settings.MapSettings
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class LocalAuthSessionStoreTest {
   @BeforeTest
@@ -47,8 +46,5 @@ class LocalAuthSessionStoreTest {
     ConnectionModeStore.save(ConnectionMode.WEBVPN)
     assertEquals("22374444", LocalAuthSessionStore.get()?.username)
     assertEquals("Vpn User", LocalAuthSessionStore.get()?.user?.name)
-
-    ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
-    assertNull(LocalAuthSessionStore.get())
   }
 }

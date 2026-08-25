@@ -11,7 +11,6 @@ import cn.edu.ubaa.api.storage.AuthTokensStore
 import cn.edu.ubaa.api.storage.ClientIdStore
 import cn.edu.ubaa.api.storage.CredentialStore
 import cn.edu.ubaa.repository.GlobalTermRepository
-import cn.edu.ubaa.supportsLocalConnectionModes
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,11 +30,6 @@ enum class ConnectionMode(
       storageKey = "webvpn",
       displayName = "WebVPN模式",
       description = "通过北航 WebVPN 访问上游。",
-  ),
-  SERVER_RELAY(
-      storageKey = "server_relay",
-      displayName = "服务器中转模式",
-      description = "使用 UBAA 服务端代理访问。",
   );
 
   companion object {
@@ -73,12 +67,7 @@ object ConnectionRuntime {
 
   internal fun apiFactory(): ApiFactory = apiFactoryProvider()
 
-  fun availableModes(): List<ConnectionMode> =
-      if (supportsLocalConnectionModes()) {
-        ConnectionMode.entries
-      } else {
-        listOf(ConnectionMode.SERVER_RELAY)
-      }
+  fun availableModes(): List<ConnectionMode> = ConnectionMode.entries
 
   fun resolveSelectedMode(): ConnectionMode? {
     val allowedModes = availableModes()
@@ -132,7 +121,7 @@ internal object ModeScopedSessionStore {
   private const val LEGACY_PREFIX = ""
 
   fun scopedKey(key: String, mode: ConnectionMode? = ConnectionModeStore.get()): String {
-    val effectiveMode = mode ?: ConnectionMode.SERVER_RELAY
+    val effectiveMode = mode ?: ConnectionMode.DIRECT
     return "mode_${effectiveMode.storageKey}_$key"
   }
 

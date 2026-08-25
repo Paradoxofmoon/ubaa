@@ -221,7 +221,7 @@ fun App() {
         MainAppScreen(
             userData = userData,
             userInfo = uiState.userInfo,
-            connectionMode = selectedConnectionMode ?: ConnectionMode.SERVER_RELAY,
+            connectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
             availableConnectionModes = availableConnectionModes,
             onEnsureUserInfo = { authViewModel.ensureUserInfoLoaded() },
             onConnectionModeSelected = { mode ->
@@ -236,7 +236,7 @@ fun App() {
       else -> {
         LoginScreen(
             loginFormState = loginForm,
-            currentConnectionMode = selectedConnectionMode ?: ConnectionMode.SERVER_RELAY,
+            currentConnectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
             availableConnectionModes = availableConnectionModes,
             onUsernameChange = { authViewModel.updateUsername(it) },
             onPasswordChange = { authViewModel.updatePassword(it) },

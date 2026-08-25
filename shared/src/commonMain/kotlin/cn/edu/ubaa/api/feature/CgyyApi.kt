@@ -1,14 +1,13 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.auth.safeApiCall
-import cn.edu.ubaa.api.core.ApiClient
+import cn.edu.ubaa.model.dto.CgyyBuddyListResponse
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrderDto
+import cn.edu.ubaa.model.dto.CgyyOrderPayResult
 import cn.edu.ubaa.model.dto.CgyyOrdersPageResponse
 import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitRequest
@@ -16,12 +15,6 @@ import cn.edu.ubaa.model.dto.CgyyReservationSubmitResponse
 import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
 import cn.edu.ubaa.model.dto.CgyySportOrderSubmitResponse
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 
 interface CgyyApiBackend {
   suspend fun getVenueSites(): Result<List<CgyyVenueSiteDto>>
@@ -44,28 +37,54 @@ interface CgyyApiBackend {
 
   /** 运动场点选验证码获取（clickWord）。默认不支持，由直连后端实现。 */
   suspend fun getClickWordCaptcha(): Result<CgyyClickWordCaptchaDto> =
-      Result.failure(UnsupportedOperationException("clickWord captcha is not supported by this backend"))
+      Result.failure(
+          UnsupportedOperationException("clickWord captcha is not supported by this backend")
+      )
 
   /** 运动场点选验证码校验：pointJson = AES-ECB(点击坐标JSON, secretKey)。 */
   suspend fun checkClickWordCaptcha(
       pointJson: String,
       token: String,
   ): Result<CgyyClickWordCheckResult> =
-      Result.failure(UnsupportedOperationException("clickWord captcha is not supported by this backend"))
+      Result.failure(
+          UnsupportedOperationException("clickWord captcha is not supported by this backend")
+      )
 
   /** 运动场下单提交（venue-server order/submit）。默认不支持，由直连后端实现。 */
   suspend fun submitSportOrder(
       request: CgyySportOrderSubmitRequest
   ): Result<CgyySportOrderSubmitResponse> =
-      Result.failure(UnsupportedOperationException("sport order submit is not supported by this backend"))
+      Result.failure(
+          UnsupportedOperationException("sport order submit is not supported by this backend")
+      )
+
+  /** 运动场同伴列表（venue-server /api/buddies，page=0&size=20）。默认不支持，由直连后端实现。 */
+  suspend fun getBuddies(page: Int = 0, size: Int = 20): Result<CgyyBuddyListResponse> =
+      Result.failure(UnsupportedOperationException("buddies is not supported by this backend"))
+
+  /** 运动场添加同伴：POST /api/buddies（buddyType=1&userUid=<学号>）。返回刷新后的列表。 */
+  suspend fun addBuddy(userUid: String, buddyType: Int = 1): Result<CgyyBuddyListResponse> =
+      Result.failure(UnsupportedOperationException("add buddy is not supported by this backend"))
+
+  /** 运动场删除同伴：POST /api/buddies/del/{id}。返回刷新后的列表。 */
+  suspend fun deleteBuddy(buddyId: Int): Result<CgyyBuddyListResponse> =
+      Result.failure(UnsupportedOperationException("delete buddy is not supported by this backend"))
+
+  /** 运动场订单支付：POST /api/venue/finances/order/pay → 航财通·校园付二维码。默认不支持，由直连后端实现。 */
+  suspend fun paySportOrder(tradeNo: String, payType: Int = 13): Result<CgyyOrderPayResult> =
+      Result.failure(UnsupportedOperationException("pay is not supported by this backend"))
+
+  /** 运动场订单取消：POST /api/venue/finances/order/cancel（venueTradeNo）。默认不支持，由直连后端实现。 */
+  suspend fun cancelSportOrder(tradeNo: String): Result<CgyyReservationSubmitResponse> =
+      Result.failure(
+          UnsupportedOperationException("sport order cancel is not supported by this backend")
+      )
 }
 
 open class CgyyApi(
     private val backendProvider: () -> CgyyApiBackend = { ConnectionRuntime.apiFactory().cgyyApi() }
 ) {
   internal constructor(backend: CgyyApiBackend) : this({ backend })
-
-  constructor(apiClient: ApiClient) : this({ RelayCgyyApiBackend(apiClient) })
 
   private fun currentBackend(): CgyyApiBackend = backendProvider()
 
@@ -119,57 +138,25 @@ open class CgyyApi(
   ): Result<CgyySportOrderSubmitResponse> {
     return currentBackend().submitSportOrder(request)
   }
-}
 
-internal class RelayCgyyApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    CgyyApiBackend {
-  override suspend fun getVenueSites(): Result<List<CgyyVenueSiteDto>> {
-    return safeApiCall { apiClient.getClient().get("api/v1/cgyy/sites") }
+  open suspend fun getBuddies(page: Int = 0, size: Int = 20): Result<CgyyBuddyListResponse> {
+    return currentBackend().getBuddies(page, size)
   }
 
-  override suspend fun getPurposeTypes(): Result<List<CgyyPurposeTypeDto>> {
-    return safeApiCall { apiClient.getClient().get("api/v1/cgyy/purpose-types") }
+  open suspend fun addBuddy(userUid: String, buddyType: Int = 1): Result<CgyyBuddyListResponse> {
+    return currentBackend().addBuddy(userUid, buddyType)
   }
 
-  override suspend fun getDayInfo(venueSiteId: Int, date: String): Result<CgyyDayInfoResponse> {
-    return safeApiCall {
-      apiClient.getClient().get("api/v1/cgyy/day-info") {
-        parameter("venueSiteId", venueSiteId)
-        parameter("date", date)
-      }
-    }
+  open suspend fun deleteBuddy(buddyId: Int): Result<CgyyBuddyListResponse> {
+    return currentBackend().deleteBuddy(buddyId)
   }
 
-  override suspend fun submitReservation(
-      request: CgyyReservationSubmitRequest
-  ): Result<CgyyReservationSubmitResponse> {
-    return safeApiCall {
-      apiClient.getClient().post("api/v1/cgyy/reservations") {
-        contentType(ContentType.Application.Json)
-        setBody(request)
-      }
-    }
+  open suspend fun paySportOrder(tradeNo: String, payType: Int = 13): Result<CgyyOrderPayResult> {
+    return currentBackend().paySportOrder(tradeNo, payType)
   }
 
-  override suspend fun getMyOrders(page: Int, size: Int): Result<CgyyOrdersPageResponse> {
-    return safeApiCall {
-      apiClient.getClient().get("api/v1/cgyy/orders") {
-        parameter("page", page)
-        parameter("size", size)
-      }
-    }
-  }
-
-  override suspend fun getOrderDetail(orderId: Int): Result<CgyyOrderDto> {
-    return safeApiCall { apiClient.getClient().get("api/v1/cgyy/orders/$orderId") }
-  }
-
-  override suspend fun cancelOrder(orderId: Int): Result<CgyyReservationSubmitResponse> {
-    return safeApiCall { apiClient.getClient().post("api/v1/cgyy/orders/$orderId/cancel") }
-  }
-
-  override suspend fun getLockCode(): Result<CgyyLockCodeResponse> {
-    return safeApiCall { apiClient.getClient().get("api/v1/cgyy/orders/lock-code") }
+  open suspend fun cancelSportOrder(tradeNo: String): Result<CgyyReservationSubmitResponse> {
+    return currentBackend().cancelSportOrder(tradeNo)
   }
 }
 

@@ -662,10 +662,7 @@ class LocalCgyyApiBackendTest {
         install(ContentNegotiation) { json(this@LocalCgyyApiBackendTest.json) }
         install(HttpCookies) {
           storage =
-              LocalCookieStore.storage(
-                  ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-                      ?: ConnectionMode.DIRECT
-              )
+              LocalCookieStore.storage(ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT)
         }
       }
     }

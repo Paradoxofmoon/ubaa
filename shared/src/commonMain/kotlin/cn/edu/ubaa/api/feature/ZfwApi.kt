@@ -1,8 +1,6 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.core.ApiClient
 import cn.edu.ubaa.model.dto.TrafficData
 import io.ktor.http.Cookie
 
@@ -90,8 +88,6 @@ class ZfwApi(
 ) {
   internal constructor(backend: ZfwApiBackend) : this({ backend })
 
-  constructor(apiClient: ApiClient) : this({ RelayZfwApiBackend(apiClient) })
-
   private fun currentBackend(): ZfwApiBackend = backendProvider()
 
   /** 获取验证码图片字节与 Cookie 描述。刷新只需再次调用本方法即可。 */
@@ -124,41 +120,4 @@ class ZfwApi(
       captcha: String,
       payPageData: ZfwPayPageData,
   ): Result<ZfwPayResult> = currentBackend().submitPay(amount, captcha, payPageData)
-}
-
-internal class RelayZfwApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    ZfwApiBackend {
-  override suspend fun fetchCaptcha(): Pair<ByteArray, String> {
-    throw NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现")
-  }
-
-  override suspend fun login(
-      username: String,
-      password: String,
-      captcha: String,
-      smsCode: String?,
-  ): Result<ZfwLoginResult> {
-    // TODO: 实现 SERVER_RELAY 模式下的校园网充值登录中继接口
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值登录尚未实现"))
-  }
-
-  override suspend fun getTraffic(): Result<TrafficData> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网流量查询尚未实现"))
-  }
-
-  override suspend fun fetchPayPage(): Result<ZfwPayPageData> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
-  }
-
-  override suspend fun fetchPayCaptcha(): Result<ByteArray> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
-  }
-
-  override suspend fun submitPay(
-      amount: String,
-      captcha: String,
-      payPageData: ZfwPayPageData,
-  ): Result<ZfwPayResult> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园网充值尚未实现"))
-  }
 }

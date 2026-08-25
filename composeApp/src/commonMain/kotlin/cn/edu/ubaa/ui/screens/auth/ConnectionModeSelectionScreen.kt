@@ -35,7 +35,7 @@ fun ConnectionModeSelectionScreen(
 ) {
   var selectedMode by
       remember(availableModes) {
-        mutableStateOf(availableModes.firstOrNull() ?: ConnectionMode.SERVER_RELAY)
+        mutableStateOf(availableModes.firstOrNull() ?: ConnectionMode.DIRECT)
       }
 
   Column(

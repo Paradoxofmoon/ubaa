@@ -7,7 +7,7 @@ import io.ktor.client.plugins.cookies.*
 /**
  * 轻量 HTTP 客户端注册中心。
  *
- * 用于不需要三模式（DIRECT/WEBVPN/SERVER_RELAY）支持的功能。 相对于 ApiFactory 的简化替代——直接返回配置好的 Ktor HttpClient。
+ * 用于不需要模式（DIRECT/WEBVPN）支持的功能。 相对于 ApiFactory 的简化替代——直接返回配置好的 Ktor HttpClient。
  */
 object ServiceRegistry {
 

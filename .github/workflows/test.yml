@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  UPDATE_DOWNLOAD_URL: https://github.com/BUAASubnet/UBAA/releases
+  UPDATE_DOWNLOAD_URL: https://github.com/Paradoxofmoon/ubaa/releases
 
 jobs:
   test-android:
@@ -48,27 +48,6 @@ jobs:
         run: |
           ./gradlew :shared:compileKotlinMetadata
           ./gradlew :composeApp:compileKotlinJvm
-
-  test-server:
-    name: Test Server
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Compile Server
-        env:
-          SERVER_BIND_HOST: ${{ secrets.SERVER_BIND_HOST || '0.0.0.0' }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          USE_VPN: ${{ secrets.USE_VPN || 'false' }}
-        run: ./gradlew :server:compileKotlin
 
   test-web-wasm:
     name: Test Web Wasm

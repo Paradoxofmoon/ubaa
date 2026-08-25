@@ -1,8 +1,6 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.core.ApiClient
 import cn.edu.ubaa.model.dto.CardBalanceData
 
 /** 校园卡充值支付方式。 */
@@ -45,8 +43,6 @@ class CardApi(
 ) {
   internal constructor(backend: CardApiBackend) : this({ backend })
 
-  constructor(apiClient: ApiClient) : this({ RelayCardApiBackend(apiClient) })
-
   private fun currentBackend(): CardApiBackend = backendProvider()
 
   /**
@@ -66,21 +62,5 @@ class CardApi(
   /** 校园卡充值：创建订单并发起支付，返回支付跳转地址。 */
   suspend fun beginRecharge(amount: String, payWayId: String): Result<CardRechargeResult> {
     return currentBackend().beginRecharge(amount, payWayId)
-  }
-}
-
-internal class RelayCardApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    CardApiBackend {
-  override suspend fun getBalance(): Result<CardBalanceData> {
-    // TODO: 实现 SERVER_RELAY 模式下的一卡通余额查询中继接口
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下一卡通余额查询尚未实现"))
-  }
-
-  override suspend fun getRechargePayWays(): Result<List<CardPayWay>> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园卡充值支付方式查询尚未实现"))
-  }
-
-  override suspend fun beginRecharge(amount: String, payWayId: String): Result<CardRechargeResult> {
-    return Result.failure(NotImplementedError("SERVER_RELAY 模式下校园卡充值尚未实现"))
   }
 }

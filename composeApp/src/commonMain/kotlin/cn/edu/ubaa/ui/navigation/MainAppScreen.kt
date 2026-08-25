@@ -31,6 +31,8 @@ import cn.edu.ubaa.ui.common.components.BottomNavTab
 import cn.edu.ubaa.ui.common.components.BottomNavigation
 import cn.edu.ubaa.ui.common.components.Sidebar
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
+import cn.edu.ubaa.ui.screens.bus.BusScreen
+import cn.edu.ubaa.ui.screens.bus.BusViewModel
 import cn.edu.ubaa.ui.screens.bykc.*
 import cn.edu.ubaa.ui.screens.card.CardScreen
 import cn.edu.ubaa.ui.screens.card.CardUiState
@@ -42,7 +44,6 @@ import cn.edu.ubaa.ui.screens.cgyy.CgyyReserveFormScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyReservePickerScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyUiState
 import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
-import cn.edu.ubaa.ui.screens.sport.SportScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyWebViewReserveScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomQueryScreen
 import cn.edu.ubaa.ui.screens.classroom.ClassroomViewModel
@@ -78,6 +79,7 @@ import cn.edu.ubaa.ui.screens.spoc.SpocAssignmentDetailScreen
 import cn.edu.ubaa.ui.screens.spoc.SpocAssignmentsScreen
 import cn.edu.ubaa.ui.screens.spoc.SpocSortField
 import cn.edu.ubaa.ui.screens.spoc.SpocViewModel
+import cn.edu.ubaa.ui.screens.sport.SportScreen
 import cn.edu.ubaa.ui.screens.ygdk.YgdkClockinFormScreen
 import cn.edu.ubaa.ui.screens.ygdk.YgdkHomeScreen
 import cn.edu.ubaa.ui.screens.ygdk.YgdkUiState
@@ -116,6 +118,7 @@ enum class AppScreen {
   CGYY_LOCK_CODE,
   CGYY_WEBVIEW_RESERVE,
   SPORT_HOME,
+  BUS_HOME,
   CLASSROOM_QUERY,
   EVALUATION,
   SPOC_ASSIGNMENTS,
@@ -269,7 +272,7 @@ fun MainAppScreen(
         null
       }
   val cgyyUiState = cgyyViewModel?.uiState?.collectAsState()?.value ?: CgyyUiState()
-  // 场馆预约原生流程：固定直连运动场后端（不走 mofrp.top 中转），isSportVenue 走运动场校验
+  // 场馆预约原生流程：固定直连运动场后端（不走外部中转），isSportVenue 走运动场校验
   val sportViewModel: CgyyViewModel? =
       if (shouldKeepSportViewModel) {
         viewModel(key = "sport-${userData.schoolid}") {
@@ -280,6 +283,13 @@ fun MainAppScreen(
               isSportVenue = true,
           )
         }
+      } else {
+        null
+      }
+  // 智慧校车订票：直达直连 zhihuixiaoche（CAS 换 beihang2 会话 cookie）
+  val busViewModel: BusViewModel? =
+      if (currentScreen == AppScreen.BUS_HOME) {
+        viewModel(key = "bus-${userData.schoolid}") { BusViewModel() }
       } else {
         null
       }
@@ -671,6 +681,7 @@ fun MainAppScreen(
         cgyyViewModel?.ensureOrdersLoaded(forceRefresh = true)
       }
       AppScreen.SPORT_HOME -> sportViewModel?.ensureInitialDataLoaded(forceRefresh = true)
+      AppScreen.BUS_HOME -> busViewModel?.loadInitialData(forceRefresh = true)
       AppScreen.EVALUATION -> evaluationViewModel?.ensureLoaded(forceRefresh = true)
       AppScreen.SPOC_ASSIGNMENTS -> spocViewModel.ensureAssignmentsLoaded(forceRefresh = true)
       AppScreen.JUDGE_ASSIGNMENTS -> judgeViewModel.ensureAssignmentsLoaded(forceRefresh = true)
@@ -734,6 +745,7 @@ fun MainAppScreen(
         cgyyViewModel?.ensureLockCodeLoaded(forceRefresh = true)
       }
       AppScreen.SPORT_HOME -> sportViewModel?.ensureInitialDataLoaded()
+      AppScreen.BUS_HOME -> busViewModel?.loadInitialData()
       AppScreen.EVALUATION -> evaluationViewModel?.ensureLoaded()
       AppScreen.SPOC_ASSIGNMENTS,
       AppScreen.SPOC_ASSIGNMENT_DETAIL -> spocViewModel.ensureAssignmentsLoaded()
@@ -786,6 +798,7 @@ fun MainAppScreen(
         AppScreen.CGYY_LOCK_CODE -> "查看密码"
         AppScreen.CGYY_WEBVIEW_RESERVE -> "网页预约场馆"
         AppScreen.SPORT_HOME -> "场馆预约"
+        AppScreen.BUS_HOME -> "智慧校车"
         AppScreen.CLASSROOM_QUERY -> "空教室查询"
         AppScreen.EVALUATION -> "自动评教"
         AppScreen.SPOC_ASSIGNMENTS -> "SPOC作业"
@@ -922,6 +935,7 @@ fun MainAppScreen(
               AdvancedFeaturesScreen(
                   onCgyyClick = { navigateTo(AppScreen.CGYY_HOME) },
                   onVenueClick = { navigateTo(AppScreen.SPORT_HOME) },
+                  onBusClick = { navigateTo(AppScreen.BUS_HOME) },
                   onEvaluationClick = { navigateTo(AppScreen.EVALUATION) },
                   onYgdkClick = { navigateTo(AppScreen.YGDK_HOME) },
                   gridState = advancedGridState,
@@ -1064,12 +1078,10 @@ fun MainAppScreen(
           AppScreen.CGYY_WEBVIEW_RESERVE ->
               CgyyWebViewReserveScreen(onBackClick = { navigateBack() })
           AppScreen.SPORT_HOME ->
-              sportViewModel?.let { vm ->
-                SportScreen(
-                    viewModel = vm,
-                    onWebFallbackClick = { navigateTo(AppScreen.CGYY_WEBVIEW_RESERVE) },
-                )
-              }
+              sportViewModel?.let { vm -> SportScreen(viewModel = vm) }
+                  ?: Box(modifier = Modifier.fillMaxSize())
+          AppScreen.BUS_HOME ->
+              busViewModel?.let { vm -> BusScreen(viewModel = vm) }
                   ?: Box(modifier = Modifier.fillMaxSize())
           AppScreen.EVALUATION -> evaluationViewModel?.let { EvaluationScreen(viewModel = it) }
           AppScreen.YGDK_HOME ->

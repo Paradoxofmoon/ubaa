@@ -138,7 +138,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier =
-                Modifier.clickable { uriHandler.openUri("https://github.com/BUAASubnet/UBAA") },
+                Modifier.clickable { uriHandler.openUri("https://github.com/Paradoxofmoon/ubaa") },
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -149,8 +149,18 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.primary,
             modifier =
                 Modifier.clickable {
-                  uriHandler.openUri("https://github.com/BUAASubnet/UBAA/issues")
+                  uriHandler.openUri("https://github.com/Paradoxofmoon/ubaa/issues")
                 },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "最初作者：BUAASubnet (MIT 协议)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier =
+                Modifier.clickable { uriHandler.openUri("https://github.com/BUAASubnet/UBAA") },
         )
       }
     }

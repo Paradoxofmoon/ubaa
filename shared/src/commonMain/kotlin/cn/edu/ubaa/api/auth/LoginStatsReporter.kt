@@ -38,5 +38,4 @@ private fun ConnectionMode.toLoginStatsConnectionMode(): LoginStatsConnectionMod
     when (this) {
       ConnectionMode.DIRECT -> LoginStatsConnectionMode.DIRECT
       ConnectionMode.WEBVPN -> LoginStatsConnectionMode.WEBVPN
-      ConnectionMode.SERVER_RELAY -> LoginStatsConnectionMode.SERVER_RELAY
     }

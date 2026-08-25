@@ -1,16 +1,7 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiCallException
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.auth.safeApiCall
-import cn.edu.ubaa.api.auth.toApiCallException
-import cn.edu.ubaa.api.auth.toUserFacingApiException
-import cn.edu.ubaa.api.core.ApiClient
 import cn.edu.ubaa.model.dto.*
-import io.ktor.client.call.body
-import io.ktor.client.request.*
-import io.ktor.http.*
 
 interface BykcApiBackend {
   suspend fun getProfile(): Result<BykcUserProfileDto>
@@ -40,8 +31,6 @@ class BykcApi(
     private val backendProvider: () -> BykcApiBackend = { ConnectionRuntime.apiFactory().bykcApi() }
 ) {
   internal constructor(backend: BykcApiBackend) : this({ backend })
-
-  constructor(apiClient: ApiClient) : this({ RelayBykcApiBackend(apiClient) })
 
   private fun currentBackend(): BykcApiBackend = backendProvider()
 
@@ -134,74 +123,5 @@ class BykcApi(
       signType: Int,
   ): Result<BykcSuccessResponse> {
     return currentBackend().signCourse(courseId, lat, lng, signType)
-  }
-}
-
-internal class RelayBykcApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    BykcApiBackend {
-  override suspend fun getProfile(): Result<BykcUserProfileDto> {
-    return safeApiCall { apiClient.getClient().get("api/v1/bykc/profile") }
-  }
-
-  override suspend fun getCourses(
-      page: Int,
-      size: Int,
-      all: Boolean,
-  ): Result<BykcCoursesResponse> {
-    return safeApiCall {
-      apiClient.getClient().get("api/v1/bykc/courses") {
-        parameter("page", page)
-        parameter("size", size)
-        parameter("all", all)
-      }
-    }
-  }
-
-  override suspend fun getCourseDetail(courseId: Long): Result<BykcCourseDetailDto> {
-    return try {
-      val response = apiClient.getClient().get("api/v1/bykc/courses/$courseId")
-
-      when (response.status) {
-        HttpStatusCode.OK -> Result.success(response.body())
-        HttpStatusCode.NotFound -> Result.failure(ApiCallException("课程不存在或已下线"))
-        else -> Result.failure(response.toApiCallException())
-      }
-    } catch (e: Exception) {
-      Result.failure(e.toUserFacingApiException("课程详情加载失败，请稍后重试"))
-    }
-  }
-
-  override suspend fun getChosenCourses(): Result<List<BykcChosenCourseDto>> {
-    return safeApiCall { apiClient.getClient().get("api/v1/bykc/courses/chosen") }
-  }
-
-  override suspend fun getStatistics(): Result<BykcStatisticsDto> {
-    return safeApiCall { apiClient.getClient().get("api/v1/bykc/statistics") }
-  }
-
-  override suspend fun selectCourse(courseId: Long): Result<BykcSuccessResponse> {
-    return safeApiCall {
-      apiClient.getClient().post("api/v1/bykc/courses/$courseId/select") {
-        contentType(ContentType.Application.Json)
-      }
-    }
-  }
-
-  override suspend fun deselectCourse(courseId: Long): Result<BykcSuccessResponse> {
-    return safeApiCall { apiClient.getClient().delete("api/v1/bykc/courses/$courseId/select") }
-  }
-
-  override suspend fun signCourse(
-      courseId: Long,
-      lat: Double?,
-      lng: Double?,
-      signType: Int,
-  ): Result<BykcSuccessResponse> {
-    return safeApiCall {
-      apiClient.getClient().post("api/v1/bykc/courses/$courseId/sign") {
-        contentType(ContentType.Application.Json)
-        setBody(BykcSignRequest(courseId, lat, lng, signType))
-      }
-    }
   }
 }

@@ -1,11 +1,7 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.auth.safeApiCall
-import cn.edu.ubaa.api.core.ApiClient
 import cn.edu.ubaa.model.dto.*
-import io.ktor.client.request.*
 
 interface SigninApiBackend {
   suspend fun getTodayClasses(): Result<SigninStatusResponse>
@@ -20,8 +16,6 @@ class SigninApi(
     }
 ) {
   internal constructor(backend: SigninApiBackend) : this({ backend })
-
-  constructor(apiClient: ApiClient) : this({ RelaySigninApiBackend(apiClient) })
 
   private fun currentBackend(): SigninApiBackend = backendProvider()
 
@@ -42,18 +36,5 @@ class SigninApi(
    */
   suspend fun performSignin(courseId: String): Result<SigninActionResponse> {
     return currentBackend().performSignin(courseId)
-  }
-}
-
-internal class RelaySigninApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    SigninApiBackend {
-  override suspend fun getTodayClasses(): Result<SigninStatusResponse> {
-    return safeApiCall { apiClient.getClient().get("api/v1/signin/today") }
-  }
-
-  override suspend fun performSignin(courseId: String): Result<SigninActionResponse> {
-    return safeApiCall {
-      apiClient.getClient().post("api/v1/signin/do") { parameter("courseId", courseId) }
-    }
   }
 }

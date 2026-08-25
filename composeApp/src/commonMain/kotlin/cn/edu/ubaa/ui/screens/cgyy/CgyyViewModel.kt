@@ -5,19 +5,23 @@ import androidx.lifecycle.viewModelScope
 import cn.edu.ubaa.api.feature.CgyyApi
 import cn.edu.ubaa.api.local.CgyyCaptchaImageData
 import cn.edu.ubaa.api.local.decodeCgyyCaptchaImage
+import cn.edu.ubaa.api.local.encryptCgyyClickWordCaptchaVerification
 import cn.edu.ubaa.api.local.encryptCgyyClickWordPointJson
+import cn.edu.ubaa.api.local.encryptCgyyOrderPin
+import cn.edu.ubaa.api.local.ensureCcpaySession
 import cn.edu.ubaa.api.storage.CgyyReservationFormStore
 import cn.edu.ubaa.api.storage.StoredCgyyReservationForm
+import cn.edu.ubaa.model.dto.CgyyBuddyListResponse
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
+import cn.edu.ubaa.model.dto.CgyyOrderPayResult
 import cn.edu.ubaa.model.dto.CgyyOrdersPageResponse
 import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
 import cn.edu.ubaa.model.dto.CgyyReservationSubmitRequest
 import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
-import cn.edu.ubaa.model.dto.CgyySportOrderSubmitResponse
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import kotlin.math.abs
 import kotlin.time.Clock
@@ -71,7 +75,7 @@ data class CgyyUiState(
     val orders: CgyyOrdersPageResponse = CgyyOrdersPageResponse(),
     val lockCode: CgyyLockCodeResponse? = null,
     val initialError: String? = null,
-        val dayInfoError: String? = null,
+    val dayInfoError: String? = null,
     val ordersError: String? = null,
     val lockCodeError: String? = null,
     val actionMessage: String? = null,
@@ -81,6 +85,27 @@ data class CgyyUiState(
     val captchaCheck: CgyyClickWordCheckResult? = null,
     val isCaptchaLoading: Boolean = false,
     val captchaError: String? = null,
+    val orderPinClientX: Int? = null,
+    val orderPinClientY: Int? = null,
+    // 运动场同伴
+    val buddies: CgyyBuddyListResponse = CgyyBuddyListResponse(),
+    val selectedBuddyIds: Set<Int> = emptySet(),
+    val isBuddiesLoading: Boolean = false,
+    val buddyError: String? = null,
+    val addBuddyUid: String = "",
+    val isAddingBuddy: Boolean = false,
+    /** 同伴添加成功计数（UI 用它判断添加成功后自动关闭弹窗）。 */
+    val buddyAddTick: Int = 0,
+    // 运动场支付
+    val payResult: CgyyOrderPayResult? = null,
+    val isPaying: Boolean = false,
+    val payError: String? = null,
+    // 运动场支付：cc-pay 收银台（复用校车/电费同款隐藏 WebView 自动唤起微信/支付宝）
+    val payCashierUrl: String? = null,
+    val payChannel: String = "wx",
+    val payChannelPending: Boolean = false,
+    /** cc-pay 会话是否已就绪（后台预热，就绪后才渲染收银台 WebView）。 */
+    val ccpayReady: Boolean = false,
 )
 
 @OptIn(ExperimentalTime::class)
@@ -103,6 +128,7 @@ class CgyyViewModel(
   private var initialLoadedOnce = false
   private var ordersLoadedOnce = false
   private var lockCodeLoadedOnce = false
+  private var buddiesLoadedOnce = false
   private val _uiState = MutableStateFlow(createInitialState())
   val uiState: StateFlow<CgyyUiState> = _uiState.asStateFlow()
 
@@ -160,6 +186,9 @@ class CgyyViewModel(
       if (siteId != null) {
         loadDayInfo(siteId, _uiState.value.selectedDate.ifBlank { currentDateProvider() })
       }
+      if (isSportVenue) {
+        loadBuddies()
+      }
     }
   }
 
@@ -175,7 +204,143 @@ class CgyyViewModel(
     initialLoadedOnce = false
     ordersLoadedOnce = false
     lockCodeLoadedOnce = false
+    buddiesLoadedOnce = false
     _uiState.value = createInitialState()
+  }
+
+  // ---- 运动场同伴 ----
+
+  fun loadBuddies(forceRefresh: Boolean = false) {
+    if (!forceRefresh && buddiesLoadedOnce) return
+    buddiesLoadedOnce = true
+    viewModelScope.launch {
+      _uiState.value = _uiState.value.copy(isBuddiesLoading = true, buddyError = null)
+      cgyyApi
+          .getBuddies()
+          .onSuccess { list ->
+            _uiState.value = _uiState.value.copy(isBuddiesLoading = false, buddies = list)
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(
+                    isBuddiesLoading = false,
+                    buddyError = it.message ?: "同伴列表加载失败",
+                )
+          }
+    }
+  }
+
+  fun toggleBuddy(buddyId: Int) {
+    val current = _uiState.value.selectedBuddyIds
+    _uiState.value =
+        _uiState.value.copy(
+            selectedBuddyIds = if (buddyId in current) current - buddyId else current + buddyId
+        )
+  }
+
+  fun updateAddBuddyUid(value: String) {
+    _uiState.value = _uiState.value.copy(addBuddyUid = value)
+  }
+
+  fun addBuddyByUid() {
+    val uid = _uiState.value.addBuddyUid.trim()
+    if (uid.isBlank()) return
+    _uiState.value = _uiState.value.copy(isAddingBuddy = true, buddyError = null)
+    viewModelScope.launch {
+      cgyyApi
+          .addBuddy(uid)
+          .onSuccess { list ->
+            _uiState.value =
+                _uiState.value.copy(
+                    isAddingBuddy = false,
+                    buddies = list,
+                    addBuddyUid = "",
+                    buddyAddTick = _uiState.value.buddyAddTick + 1,
+                )
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(isAddingBuddy = false, buddyError = it.message ?: "同伴添加失败")
+          }
+    }
+  }
+
+  fun deleteBuddy(buddyId: Int) {
+    viewModelScope.launch {
+      cgyyApi
+          .deleteBuddy(buddyId)
+          .onSuccess { list ->
+            _uiState.value =
+                _uiState.value.copy(
+                    buddies = list,
+                    selectedBuddyIds = _uiState.value.selectedBuddyIds - buddyId,
+                )
+          }
+          .onFailure { _uiState.value = _uiState.value.copy(buddyError = it.message ?: "同伴删除失败") }
+    }
+  }
+
+  // ---- 运动场支付（优先 cc-pay 收银台直接唤起微信/支付宝；无收银台退回航财通扫码） ----
+
+  fun dismissPayResult() {
+    _uiState.value = _uiState.value.copy(payResult = null, payError = null)
+  }
+
+  private fun paySportOrder(tradeNo: String) {
+    viewModelScope.launch {
+      _uiState.value = _uiState.value.copy(isPaying = true, payError = null)
+      cgyyApi
+          .paySportOrder(tradeNo)
+          .onSuccess { pay ->
+            _uiState.value = _uiState.value.copy(isPaying = false)
+            val cashierUrl = pay.schoolPayUrl?.takeIf { "cashier.cc-pay.cn" in it }
+            if (!cashierUrl.isNullOrBlank()) {
+              // cc-pay 收银台 → 立即弹渠道选择，cc-pay 会话后台预热，不阻塞用户决策
+              _uiState.value =
+                  _uiState.value.copy(
+                      payCashierUrl = cashierUrl,
+                      payChannelPending = true,
+                      payResult = null,
+                  )
+              viewModelScope.launch {
+                // 无论成功失败都标记就绪（失败时页面可能仍可工作或提示重试）
+                runCatching { ensureCcpaySession() }
+                _uiState.value = _uiState.value.copy(ccpayReady = true)
+              }
+            } else if (!pay.payCode.isNullOrBlank()) {
+              // 无收银台 → 退回航财通·校园付扫码
+              _uiState.value = _uiState.value.copy(payResult = pay)
+            } else {
+              setActionMessage("支付信息为空，请稍后在订单列表查看")
+            }
+          }
+          .onFailure {
+            _uiState.value =
+                _uiState.value.copy(isPaying = false, payError = it.message ?: "支付发起失败")
+          }
+    }
+  }
+
+  /** 用户选定支付渠道（wx / ali）后拉起 cc-pay 收银台。 */
+  fun chooseVenuePayChannel(channel: String) {
+    val s = _uiState.value
+    if (s.payCashierUrl.isNullOrBlank()) return
+    _uiState.value =
+        s.copy(
+            payChannel = if (channel == "ali") "ali" else "wx",
+            payChannelPending = false,
+        )
+  }
+
+  /** 用户取消/收银台流程结束：清理支付状态。 */
+  fun clearVenuePay() {
+    _uiState.value =
+        _uiState.value.copy(
+            payCashierUrl = null,
+            payChannel = "wx",
+            payChannelPending = false,
+            ccpayReady = false,
+        )
   }
 
   fun ensureLockCodeLoaded(forceRefresh: Boolean = false) {
@@ -349,7 +514,11 @@ class CgyyViewModel(
         else -> "已完成选择，可以进入下一步"
       }
 
-  fun submitReservation(onSuccess: (() -> Unit)? = null) {
+  fun submitReservation(
+      onSuccess: (() -> Unit)? = null,
+      clientX: Int? = null,
+      clientY: Int? = null,
+  ) {
     val current = _uiState.value
     val siteId = current.selectedSiteId ?: return setActionMessage("请先选择场地")
     _uiState.value = current.copy(hasTriedSubmitReservation = true, actionMessage = null)
@@ -357,7 +526,12 @@ class CgyyViewModel(
     if (current.phone.isBlank()) return setActionMessage("请填写联系电话")
 
     if (isSportVenue) {
-      // 运动场下单：先出点选验证码，通过后再带 orderPin 提交
+      // 运动场下单：记录提交按钮点击坐标（orderPin 明文 clientX,clientY），先出点选验证码
+      _uiState.value =
+          _uiState.value.copy(
+              orderPinClientX = clientX,
+              orderPinClientY = clientY,
+          )
       startSportCheckout()
       return
     }
@@ -465,12 +639,37 @@ class CgyyViewModel(
   }
 
   fun cancelOrder(orderId: Int) {
+    if (isSportVenue) {
+      val tradeNo = _uiState.value.orders.content.firstOrNull { it.id == orderId }?.tradeNo
+      if (tradeNo.isNullOrBlank()) {
+        _uiState.value = _uiState.value.copy(actionMessage = "该订单缺少支付流水号，无法取消")
+        return
+      }
+      cancelSportOrder(tradeNo)
+      return
+    }
     viewModelScope.launch {
       _uiState.value = _uiState.value.copy(actionMessage = null)
       cgyyApi
           .cancelOrder(orderId)
           .onSuccess {
             _uiState.value = _uiState.value.copy(actionMessage = it.message)
+            loadOrders(_uiState.value.orders.number, _uiState.value.orders.size)
+          }
+          .onFailure {
+            _uiState.value = _uiState.value.copy(actionMessage = it.message ?: "取消预约失败")
+          }
+    }
+  }
+
+  /** 运动场订单取消：POST /api/venue/finances/order/cancel（venueTradeNo）。 */
+  private fun cancelSportOrder(tradeNo: String) {
+    viewModelScope.launch {
+      _uiState.value = _uiState.value.copy(actionMessage = null)
+      cgyyApi
+          .cancelSportOrder(tradeNo)
+          .onSuccess {
+            _uiState.value = _uiState.value.copy(actionMessage = it.message ?: "已取消预约")
             loadOrders(_uiState.value.orders.number, _uiState.value.orders.size)
           }
           .onFailure {
@@ -538,8 +737,15 @@ class CgyyViewModel(
                     selectedDate = response.reservationDate,
                     selections = filteredSelections,
                 )
+            val resolvedPhone =
+                if (isSportVenue && nextState.phone.isBlank()) {
+                  response.orderParamViewPhone.orEmpty()
+                } else {
+                  nextState.phone
+                }
             _uiState.value =
                 nextState.copy(
+                    phone = resolvedPhone,
                     reservationSummary = buildReservationSummary(nextState),
                 )
           }
@@ -562,7 +768,8 @@ class CgyyViewModel(
       cgyyApi
           .getClickWordCaptcha()
           .onSuccess { captcha ->
-            val image = runCatching { decodeCgyyCaptchaImage(captcha.originalImageBase64) }.getOrNull()
+            val image =
+                runCatching { decodeCgyyCaptchaImage(captcha.originalImageBase64) }.getOrNull()
             _uiState.value =
                 _uiState.value.copy(
                     isCaptchaLoading = false,
@@ -606,6 +813,8 @@ class CgyyViewModel(
             captchaCheck = null,
             isCaptchaLoading = false,
             captchaError = null,
+            orderPinClientX = null,
+            orderPinClientY = null,
         )
   }
 
@@ -615,35 +824,55 @@ class CgyyViewModel(
     if (captcha.wordList.isEmpty()) return
     if (_uiState.value.captchaPoints.size >= captcha.wordList.size) return
     val nextPoints = _uiState.value.captchaPoints + CgyySportCaptchaPoint(x, y)
-    _uiState.value = _uiState.value.copy(captchaPoints = nextPoints, captchaError = null, actionMessage = null)
+    _uiState.value =
+        _uiState.value.copy(captchaPoints = nextPoints, captchaError = null, actionMessage = null)
     if (nextPoints.size >= captcha.wordList.size) {
       verifyClickWordCaptcha(displayWidth, displayHeight)
     }
   }
 
-  /** 校验点选：显示坐标按原图缩放 → AES-ECB 加密 → captcha/check。 */
+  /** 校验点选：显示坐标归一化到 310×155 空间（网页 pointTransfrom 同款）→ AES-ECB 加密 → captcha/check。 */
   fun verifyClickWordCaptcha(displayWidth: Int, displayHeight: Int) {
     val captcha = _uiState.value.clickWordCaptcha ?: return
-    val image = _uiState.value.captchaImage ?: return
     if (displayWidth <= 0 || displayHeight <= 0) return
     val pointJsonData =
         _uiState.value.captchaPoints.joinToString(",", "[", "]") { p ->
-          val ox = (p.x.toDouble() * image.width / displayWidth).toInt()
-          val oy = (p.y.toDouble() * image.height / displayHeight).toInt()
+          val ox = kotlin.math.round(310.0 * p.x / displayWidth).toInt()
+          val oy = kotlin.math.round(155.0 * p.y / displayHeight).toInt()
           "{\"x\":$ox,\"y\":$oy}"
         }
     val pointJson =
-        runCatching { encryptCgyyClickWordPointJson(pointJsonData, captcha.secretKey) }.getOrElse {
-          _uiState.value = _uiState.value.copy(captchaError = "验证码坐标加密失败")
-          return
-        }
+        runCatching { encryptCgyyClickWordPointJson(pointJsonData, captcha.secretKey) }
+            .getOrElse {
+              _uiState.value = _uiState.value.copy(captchaError = "验证码坐标加密失败")
+              return
+            }
     _uiState.value = _uiState.value.copy(isCaptchaLoading = true, captchaError = null)
     viewModelScope.launch {
       cgyyApi
           .checkClickWordCaptcha(pointJson, captcha.token)
           .onSuccess { check ->
+            // captchaVerification 服务器不返回，需按网页同款自算：AES-ECB(token+"---"+pointJsonData, secretKey)
+            val verification =
+                runCatching {
+                      encryptCgyyClickWordCaptchaVerification(
+                          captcha.token,
+                          pointJsonData,
+                          captcha.secretKey,
+                      )
+                    }
+                    .getOrNull()
+            val finalCheck =
+                CgyyClickWordCheckResult(
+                    captchaVerification = verification ?: check.captchaVerification,
+                    captchaToken = check.captchaToken,
+                )
             _uiState.value =
-                _uiState.value.copy(isCaptchaLoading = false, captchaCheck = check, captchaError = null)
+                _uiState.value.copy(
+                    isCaptchaLoading = false,
+                    captchaCheck = finalCheck,
+                    captchaError = null,
+                )
             performSportOrderSubmit()
           }
           .onFailure {
@@ -674,11 +903,20 @@ class CgyyViewModel(
         }
     val orderPrice =
         current.selections.sumOf { sel ->
-          dayInfo.spaces.firstOrNull { it.spaceId == sel.spaceId }
+          dayInfo.spaces
+              .firstOrNull { it.spaceId == sel.spaceId }
               ?.slots
               ?.firstOrNull { it.timeId == sel.timeId }
               ?.orderFee ?: 0.0
         }
+    val pinX = current.orderPinClientX ?: 0
+    val pinY = current.orderPinClientY ?: 0
+    val orderPin =
+        runCatching { encryptCgyyOrderPin(pinX, pinY) }
+            .getOrElse {
+              _uiState.value = _uiState.value.copy(actionMessage = "orderPin 生成失败")
+              return
+            }
     val request =
         CgyySportOrderSubmitRequest(
             venueSiteId = siteId,
@@ -686,8 +924,9 @@ class CgyyViewModel(
             weekStartDate = venueMondayOfWeek(current.selectedDate),
             reservationOrderJson = reservationOrderJson,
             orderPrice = orderPrice,
-            orderPin = SPORT_ORDER_PIN_CONSTANT,
+            orderPin = orderPin,
             phone = current.phone,
+            buddyIds = current.selectedBuddyIds.joinToString(","),
             captchaVerification = check.captchaVerification,
             captchaToken = check.captchaToken,
         )
@@ -706,10 +945,16 @@ class CgyyViewModel(
                     captchaPoints = emptyList(),
                     captchaCheck = null,
                     hasTriedSubmitReservation = false,
+                    orderPinClientX = null,
+                    orderPinClientY = null,
                     actionMessage = "预约成功（订单号 ${result.tradeNo ?: "-"}）",
                 )
             loadDayInfo(siteId, current.selectedDate)
             loadOrders()
+            val tradeNo = result.tradeNo
+            if (tradeNo != null) {
+              paySportOrder(tradeNo)
+            }
           }
           .onFailure {
             _uiState.value =
@@ -720,6 +965,7 @@ class CgyyViewModel(
           }
     }
   }
+
   private fun setActionMessage(message: String) {
     _uiState.value = _uiState.value.copy(actionMessage = message)
   }
@@ -779,15 +1025,13 @@ class CgyyViewModel(
   }
 }
 
-private const val SPORT_ORDER_PIN_CONSTANT =
-    "71e8441b6e2b4afaff9f6dac16a94c2e"
-
 /** 运动场下单 weekStartDate = 该日期所在周的周一（yyyy-MM-dd）。 */
 private fun venueMondayOfWeek(date: String): String =
     runCatching {
-      val d = LocalDate.parse(date)
-      d.minus(d.dayOfWeek.ordinal - 1, DateTimeUnit.DAY).toString()
-    }.getOrDefault(date)
+          val d = LocalDate.parse(date)
+          d.minus(d.dayOfWeek.ordinal - 1, DateTimeUnit.DAY).toString()
+        }
+        .getOrDefault(date)
 
 /** 仅保留支持预约的场馆（isSupportReservation 为 null 或 true；丢弃明确 false 的）。 */
 private fun List<CgyyVenueSiteDto>.filterReservable(): List<CgyyVenueSiteDto> = filter {

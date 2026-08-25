@@ -5,7 +5,7 @@ import cn.edu.ubaa.api.auth.AuthServiceBackend
 import cn.edu.ubaa.api.auth.UserServiceBackend
 import cn.edu.ubaa.api.core.ApiFactory
 import cn.edu.ubaa.api.core.DefaultApiFactory
-import cn.edu.ubaa.api.core.RelayApiFactory
+import cn.edu.ubaa.api.feature.BusApiBackend
 import cn.edu.ubaa.api.feature.BykcApiBackend
 import cn.edu.ubaa.api.feature.CardApi
 import cn.edu.ubaa.api.feature.CardApiBackend
@@ -41,6 +41,11 @@ import cn.edu.ubaa.api.local.LocalSigninApiBackend
 import cn.edu.ubaa.api.local.LocalSpocApiBackend
 import cn.edu.ubaa.api.local.LocalUserServiceBackend
 import cn.edu.ubaa.api.local.LocalYgdkApiBackend
+import cn.edu.ubaa.model.dto.BusBuyResultDto
+import cn.edu.ubaa.model.dto.BusIndexPageDto
+import cn.edu.ubaa.model.dto.BusSessionUserDto
+import cn.edu.ubaa.model.dto.BusShiftsResponse
+import cn.edu.ubaa.model.dto.BusTicketDetailDto
 import cn.edu.ubaa.model.dto.CaptchaInfo
 import cn.edu.ubaa.model.dto.CardBalanceData
 import cn.edu.ubaa.model.dto.LoginPreloadResponse
@@ -58,14 +63,14 @@ import kotlinx.coroutines.test.runTest
 class ApiFactoryDispatchTest {
   @BeforeTest
   fun setup() {
-    ConnectionRuntime.apiFactoryProvider = { RelayApiFactory }
+    ConnectionRuntime.apiFactoryProvider = { DefaultApiFactory }
     ConnectionModeStore.settings = MapSettings()
     ConnectionRuntime.clearSelectedMode()
   }
 
   @AfterTest
   fun tearDown() {
-    ConnectionRuntime.apiFactoryProvider = { RelayApiFactory }
+    ConnectionRuntime.apiFactoryProvider = { DefaultApiFactory }
     ConnectionRuntime.clearSelectedMode()
   }
 
@@ -306,6 +311,7 @@ private class FakeApiFactory(
     private val cardBackend: CardApiBackend = FakeCardApiBackend(),
     private val networkBackend: NetworkApiBackend = FakeNetworkApiBackend(),
     private val zfwBackend: ZfwApiBackend = FakeZfwApiBackend(),
+    private val busBackend: BusApiBackend = FakeBusApiBackend(),
 ) : ApiFactory {
   override fun authService(): AuthServiceBackend = authBackend
 
@@ -323,6 +329,8 @@ private class FakeApiFactory(
 
   override fun cgyyApi(): CgyyApiBackend = cgyyBackend
 
+  override fun sportVenueApi(): CgyyApiBackend = cgyyBackend
+
   override fun ygdkApi(): YgdkApiBackend = ygdkBackend
 
   override fun classroomApi(): ClassroomApiBackend = classroomBackend
@@ -338,6 +346,35 @@ private class FakeApiFactory(
   override fun networkApi(): NetworkApiBackend = networkBackend
 
   override fun zfwApi(): ZfwApiBackend = zfwBackend
+
+  override fun busApi(): BusApiBackend = busBackend
+}
+
+private class FakeBusApiBackend : BusApiBackend {
+  override suspend fun getIndexPage(): Result<BusIndexPageDto> = Result.success(BusIndexPageDto())
+
+  override suspend fun getSessionUser(): Result<BusSessionUserDto> =
+      Result.success(BusSessionUserDto())
+
+  override suspend fun searchShifts(
+      origin: String,
+      terminal: String,
+      date: String,
+  ): Result<BusShiftsResponse> = Result.success(BusShiftsResponse())
+
+  override suspend fun getTicketDetail(
+      date: String,
+      shiftsNumber: String,
+  ): Result<BusTicketDetailDto> = Result.success(BusTicketDetailDto())
+
+  override suspend fun getCaptchaImage(): Result<ByteArray> = Result.success(ByteArray(0))
+
+  override suspend fun buyTicket(
+      date: String,
+      shiftsNumber: String,
+      checkStr: String,
+      csrfToken: String,
+  ): Result<BusBuyResultDto> = Result.success(BusBuyResultDto())
 }
 
 private class FakeAuthServiceBackend : AuthServiceBackend {
@@ -524,6 +561,11 @@ private class FakeCardApiBackend : CardApiBackend {
     getBalanceCalls++
     return Result.success(CardBalanceData(balance = "1234.56", unclaimedAmount = "50.00"))
   }
+
+  override suspend fun beginRecharge(
+      amount: String,
+      payWayId: String,
+  ): Result<cn.edu.ubaa.api.feature.CardRechargeResult> = error("unused")
 }
 
 private class FakeNetworkApiBackend : NetworkApiBackend {
@@ -557,4 +599,17 @@ private class FakeZfwApiBackend : ZfwApiBackend {
     loginCalls++
     return Result.success(ZfwLoginResult.Success())
   }
+
+  override suspend fun getTraffic(): Result<TrafficData> = error("unused")
+
+  override suspend fun fetchPayPage(): Result<cn.edu.ubaa.api.feature.ZfwPayPageData> =
+      error("unused")
+
+  override suspend fun fetchPayCaptcha(): Result<ByteArray> = error("unused")
+
+  override suspend fun submitPay(
+      amount: String,
+      captcha: String,
+      payPageData: cn.edu.ubaa.api.feature.ZfwPayPageData,
+  ): Result<cn.edu.ubaa.api.feature.ZfwPayResult> = error("unused")
 }

@@ -12,7 +12,8 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:exported="true"
-            android:name="cn.edu.ubaa.MainActivity">
+            android:name="cn.edu.ubaa.MainActivity"
+            android:theme="@style/Theme.UBAA.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

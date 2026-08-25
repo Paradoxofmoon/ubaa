@@ -588,10 +588,7 @@ class LocalBykcApiBackendTest {
         install(ContentNegotiation) { json(this@LocalBykcApiBackendTest.json) }
         install(HttpCookies) {
           storage =
-              LocalCookieStore.storage(
-                  ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-                      ?: ConnectionMode.DIRECT
-              )
+              LocalCookieStore.storage(ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT)
         }
       }
     }

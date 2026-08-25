@@ -152,9 +152,7 @@ internal data class StoredCookieRecord(
  * name=value" 字符串。返回空串表示无可注入 cookie。
  */
 fun buildCcpayCookieHeader(): String {
-  val mode =
-      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-          ?: ConnectionMode.DIRECT
+  val mode = ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
   val records = LocalCookieStore.load(mode)
   val parts = mutableListOf<String>()
   for (record in records) {
@@ -177,9 +175,7 @@ fun buildCcpayCookieHeader(): String {
  * "name=value")` 列表， 用于向 WebView 按域注入登录态，使其免重登。
  */
 fun buildBuaaEduCnDomainCookies(): List<Pair<String, String>> {
-  val mode =
-      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-          ?: ConnectionMode.DIRECT
+  val mode = ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
   val records = LocalCookieStore.load(mode)
   val result = mutableListOf<Pair<String, String>>()
   // 注入目标：cgyy 站点域（WebView 实际加载 https://cgyy.buaa.edu.cn/venue/mobileReservation）
@@ -286,8 +282,7 @@ internal class PersistentLocalCookieStorage(private val mode: ConnectionMode) : 
 
 internal object LocalUpstreamClientProvider {
   private fun currentCookieMode(): ConnectionMode =
-      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-          ?: ConnectionMode.DIRECT
+      ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
 
   internal var clientFactory: (Boolean) -> HttpClient = { followRedirects ->
     buildLocalUpstreamClient(
@@ -440,9 +435,7 @@ internal suspend fun resolveLocalBusinessAuthenticationFailure(
 }
 
 private suspend fun reportLocalLoginSuccess(username: String, successMode: LoginStatsSuccessMode) {
-  val connectionMode =
-      ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-          ?: ConnectionMode.DIRECT
+  val connectionMode = ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
   LoginStatsReporter.reportSuccess(username, successMode, connectionMode)
 }
 

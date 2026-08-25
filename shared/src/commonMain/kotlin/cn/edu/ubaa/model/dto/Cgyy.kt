@@ -69,6 +69,7 @@ data class CgyyDayInfoResponse(
     val spaces: List<CgyySpaceAvailabilityDto> = emptyList(),
     val reservationToken: String? = null,
     val reservationTotalNum: Int? = null,
+    val orderParamViewPhone: String? = null,
 )
 
 @Serializable
@@ -176,6 +177,54 @@ data class CgyySportOrderSubmitResponse(
     val orderId: Long? = null,
     val tradeNo: String? = null,
 )
+
+/** 运动场同伴（同伴/家属/儿童），来自 venue-server /api/buddies。 */
+@Serializable
+data class CgyyBuddyDto(
+    val id: Int = 0,
+    val userUid: String? = null,
+    val name: String? = null,
+    val userPhone: String? = null,
+    val buddyType: Int? = null,
+    val userId: Int? = null,
+    val userRoleId: Int? = null,
+    val gmtCreate: String? = null,
+    val nameInitial: String? = null,
+) {
+  val buddyTypeLabel: String
+    get() =
+        when (buddyType) {
+          1 -> "同伴"
+          2 -> "家属"
+          3 -> "儿童"
+          else -> "同伴"
+        }
+}
+
+/** 运动场同伴列表分页（/api/buddies?page=0&size=20 → data.content[]）。 */
+@Serializable
+data class CgyyBuddyListResponse(
+    val content: List<CgyyBuddyDto> = emptyList(),
+    val totalElements: Int = 0,
+)
+
+/** 运动场订单支付结果（/api/venue/finances/order/pay → data）。 */
+@Serializable
+data class CgyyOrderPayResult(
+    val tradeNo: String? = null,
+    /** 航财通·校园付二维码 base64（无 data: 前缀，渲染时拼接 data:image/png;base64,）。 */
+    val payCode: String? = null,
+    /** 电脑支付链接（schoolPayUrl）。 */
+    val schoolPayUrl: String? = null,
+    val payUrl: String? = null,
+    val scanTip: String? = null,
+    val payFee: Double? = null,
+    val payType: Int? = null,
+    val remainSecond: Int? = null,
+) {
+  val effectivePayUrl: String?
+    get() = schoolPayUrl?.takeIf { it.isNotBlank() } ?: payUrl?.takeIf { it.isNotBlank() }
+}
 
 enum class CgyyOrderDisplayColor {
   SUCCESS,

@@ -83,7 +83,6 @@ tmp/
 session_store.db
 
 release/
-server/data/session_store.db
 
 _bmad
 _bmad-output
@@ -102,6 +101,3 @@ todo.md
 .playwright-cli/
 output/
 .playwright-mcp/
-server/announcement.json
-docs/.vitepress/dist
-docs/.vitepress/cache

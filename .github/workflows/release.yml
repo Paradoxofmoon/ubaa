@@ -80,33 +80,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-server:
-    name: Build Server JAR
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Get Version
-        id: get_version
-        run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
-      - name: Build Server
-        run: |
-          ./gradlew :server:buildFatJar
-          cp server/build/libs/*-all.jar UBAA-Server-v${{ steps.get_version.outputs.VERSION }}.jar
-      - name: Upload Server Release Assets
-        uses: softprops/action-gh-release@v2
-        with:
-          files: UBAA-Server-v${{ steps.get_version.outputs.VERSION }}.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-web-wasm:
     name: Build Web Wasm
     runs-on: ubuntu-latest

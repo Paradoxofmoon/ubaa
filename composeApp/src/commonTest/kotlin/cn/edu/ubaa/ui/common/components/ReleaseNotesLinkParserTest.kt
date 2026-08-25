@@ -7,14 +7,14 @@ class ReleaseNotesLinkParserTest {
   @Test
   fun parsesRawUrlsAsLinkSegments() {
     val segments =
-        parseReleaseNotesLinks("下载 https://github.com/BUAASubnet/UBAA/releases/latest 查看详情")
+        parseReleaseNotesLinks("下载 https://github.com/Paradoxofmoon/ubaa/releases/latest 查看详情")
 
     assertEquals(
         listOf(
             ReleaseNotesSegment.Text("下载 "),
             ReleaseNotesSegment.Link(
-                text = "https://github.com/BUAASubnet/UBAA/releases/latest",
-                url = "https://github.com/BUAASubnet/UBAA/releases/latest",
+                text = "https://github.com/Paradoxofmoon/ubaa/releases/latest",
+                url = "https://github.com/Paradoxofmoon/ubaa/releases/latest",
             ),
             ReleaseNotesSegment.Text(" 查看详情"),
         ),
@@ -25,14 +25,14 @@ class ReleaseNotesLinkParserTest {
   @Test
   fun parsesMarkdownLinksWithReadableText() {
     val segments =
-        parseReleaseNotesLinks("请查看 [发布页面](https://github.com/BUAASubnet/UBAA/releases)。")
+        parseReleaseNotesLinks("请查看 [发布页面](https://github.com/Paradoxofmoon/ubaa/releases)。")
 
     assertEquals(
         listOf(
             ReleaseNotesSegment.Text("请查看 "),
             ReleaseNotesSegment.Link(
                 text = "发布页面",
-                url = "https://github.com/BUAASubnet/UBAA/releases",
+                url = "https://github.com/Paradoxofmoon/ubaa/releases",
             ),
             ReleaseNotesSegment.Text("。"),
         ),

@@ -138,6 +138,16 @@ actual fun InAppWebView(
                   return super.shouldOverrideUrlLoading(view, request)
                 }
 
+                override fun onPageCommitVisible(view: WebView, url: String?) {
+                  super.onPageCommitVisible(view, url)
+                  // 提前注入：页面一提交（首帧渲染）就开始跑自动点击轮询，不必等全部子资源加载完
+                  if (android.os.Build.VERSION.SDK_INT >= 23) {
+                    injectJsOnLoad
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { js -> runCatching { view.evaluateJavascript(js, null) } }
+                  }
+                }
+
                 override fun onPageFinished(view: WebView, loadedUrl: String) {
                   super.onPageFinished(view, loadedUrl)
                   injectJsOnLoad

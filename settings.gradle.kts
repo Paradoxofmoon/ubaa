@@ -59,6 +59,4 @@ include(":androidApp")
 
 include(":composeApp")
 
-include(":server")
-
 include(":shared")

@@ -40,7 +40,7 @@ class ConnectionRuntimeTest {
 
   @Test
   fun `switching connection mode clears all scoped sessions and disables auto login`() {
-    ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
+    ConnectionModeStore.save(ConnectionMode.WEBVPN)
     AuthTokensStore.save(
         StoredAuthTokens(
             accessToken = "relay-access",
@@ -69,11 +69,11 @@ class ConnectionRuntimeTest {
     CredentialStore.setRememberPassword(true)
     CredentialStore.setAutoLogin(true)
 
-    ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
+    ConnectionModeStore.save(ConnectionMode.WEBVPN)
 
-    ConnectionRuntime.switchMode(ConnectionMode.WEBVPN)
+    ConnectionRuntime.switchMode(ConnectionMode.DIRECT)
 
-    assertEquals(ConnectionMode.WEBVPN, ConnectionRuntime.currentMode())
+    assertEquals(ConnectionMode.DIRECT, ConnectionRuntime.currentMode())
     assertNull(AuthTokensStore.get())
     assertNull(ClientIdStore.get())
     assertNull(LocalAuthSessionStore.get())
@@ -82,7 +82,7 @@ class ConnectionRuntimeTest {
     assertEquals("22373333", CredentialStore.getUsername())
     assertEquals("secret", CredentialStore.getPassword())
 
-    ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
+    ConnectionModeStore.save(ConnectionMode.WEBVPN)
     assertNull(AuthTokensStore.get())
     ConnectionModeStore.save(ConnectionMode.DIRECT)
     assertNull(AuthTokensStore.get())
@@ -102,7 +102,7 @@ class ConnectionRuntimeTest {
 
     assertTrue(AuthService().hasPersistedSession())
 
-    ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
+    ConnectionModeStore.save(ConnectionMode.WEBVPN)
     assertFalse(AuthService().hasPersistedSession())
   }
 }

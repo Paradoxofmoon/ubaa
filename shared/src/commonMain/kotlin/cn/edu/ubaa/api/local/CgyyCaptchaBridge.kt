@@ -29,3 +29,14 @@ fun encryptCgyyClickWordPointJson(pointJsonData: String, secretKey: String): Str
   val encrypted = PlatformAesEcbPkcs5Padding.encrypt(pointJsonData.encodeToByteArray(), keyBytes)
   return Base64.encode(encrypted)
 }
+
+/**
+ * 构造下单用的 captchaVerification（网页同款）： AES-ECB(`token` + "---" + `pointJsonData`, `secretKey`) →
+ * Base64。 服务器 /api/captcha/check 不返回该值，需客户端自算。
+ */
+@OptIn(ExperimentalEncodingApi::class)
+fun encryptCgyyClickWordCaptchaVerification(
+    token: String,
+    pointJsonData: String,
+    secretKey: String,
+): String = encryptCgyyClickWordPointJson("$token---$pointJsonData", secretKey)

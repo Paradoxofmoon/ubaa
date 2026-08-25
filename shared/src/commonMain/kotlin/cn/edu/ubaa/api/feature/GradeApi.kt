@@ -1,12 +1,7 @@
 package cn.edu.ubaa.api.feature
 
 import cn.edu.ubaa.api.ConnectionRuntime
-import cn.edu.ubaa.api.auth.ApiClientProvider
-import cn.edu.ubaa.api.auth.safeApiCall
-import cn.edu.ubaa.api.core.ApiClient
 import cn.edu.ubaa.model.dto.GradeData
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 
 interface GradeApiBackend {
   suspend fun getGrades(termCode: String): Result<GradeData>
@@ -19,18 +14,7 @@ class GradeApi(
 ) {
   internal constructor(backend: GradeApiBackend) : this({ backend })
 
-  constructor(apiClient: ApiClient) : this({ RelayGradeApiBackend(apiClient) })
-
   private fun currentBackend(): GradeApiBackend = backendProvider()
 
   suspend fun getGrades(termCode: String): Result<GradeData> = currentBackend().getGrades(termCode)
-}
-
-internal class RelayGradeApiBackend(private val apiClient: ApiClient = ApiClientProvider.shared) :
-    GradeApiBackend {
-  override suspend fun getGrades(termCode: String): Result<GradeData> {
-    return safeApiCall {
-      apiClient.getClient().get("api/v1/grade/list") { parameter("termCode", termCode) }
-    }
-  }
 }

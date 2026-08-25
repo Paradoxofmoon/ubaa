@@ -220,9 +220,7 @@ internal class LocalJudgeApiBackend(
         LocalAuthSessionStore.get() ?: return Result.failure(localUnauthenticatedApiException())
 
     return try {
-      val mode =
-          ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-              ?: ConnectionMode.DIRECT
+      val mode = ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
       Result.success(currentClient(LocalJudgeCacheScope(mode, session.username)).block(session))
     } catch (e: LocalJudgeAuthenticationException) {
       Result.failure(resolveLocalBusinessAuthenticationFailure("judge_auth_failed"))
@@ -366,9 +364,7 @@ private class LocalJudgeClient(
   }
 
   suspend fun <T> withIsolatedClient(block: suspend (LocalJudgeClient) -> T): T {
-    val mode =
-        ConnectionRuntime.currentMode()?.takeIf { it != ConnectionMode.SERVER_RELAY }
-            ?: ConnectionMode.DIRECT
+    val mode = ConnectionRuntime.currentMode() ?: ConnectionMode.DIRECT
     val cookieStorage = ForkedLocalJudgeCookieStorage(LocalCookieStore.storage(mode))
     val client = LocalUpstreamClientProvider.newClient(cookieStorage)
     val worker =

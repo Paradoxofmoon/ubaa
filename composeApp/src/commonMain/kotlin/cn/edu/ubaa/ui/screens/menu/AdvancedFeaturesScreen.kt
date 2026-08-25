@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.WbSunny
@@ -55,6 +56,12 @@ internal fun advancedFeatureItems(): List<AdvancedFeatureItem> =
             icon = Icons.Default.Place,
         ),
         AdvancedFeatureItem(
+            id = "bus",
+            title = "智慧校车",
+            description = "校车班次查询与订票",
+            icon = Icons.Default.DirectionsBus,
+        ),
+        AdvancedFeatureItem(
             id = "ygdk",
             title = "阳光打卡",
             description = "查看记录并提交体育活动打卡",
@@ -78,6 +85,7 @@ internal fun advancedFeatureItems(): List<AdvancedFeatureItem> =
 fun AdvancedFeaturesScreen(
     onCgyyClick: () -> Unit,
     onVenueClick: () -> Unit,
+    onBusClick: () -> Unit,
     onEvaluationClick: () -> Unit,
     onYgdkClick: () -> Unit,
     gridState: LazyGridState,
@@ -99,6 +107,7 @@ fun AdvancedFeaturesScreen(
               when (feature.id) {
                 "cgyy" -> onCgyyClick()
                 "venue" -> onVenueClick()
+                "bus" -> onBusClick()
                 "ygdk" -> onYgdkClick()
                 "evaluation" -> onEvaluationClick()
               }

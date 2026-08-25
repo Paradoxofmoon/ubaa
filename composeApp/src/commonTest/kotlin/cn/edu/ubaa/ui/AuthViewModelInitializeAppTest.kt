@@ -78,7 +78,7 @@ class AuthViewModelInitializeAppTest {
   fun `initializeApp preserves tokens and skips relogin when auth status times out upstream`() =
       runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
-        ConnectionModeStore.save(ConnectionMode.SERVER_RELAY)
+        ConnectionModeStore.save(ConnectionMode.WEBVPN)
         AuthTokensStore.save(
             StoredAuthTokens(
                 accessToken = "stale-access-token",

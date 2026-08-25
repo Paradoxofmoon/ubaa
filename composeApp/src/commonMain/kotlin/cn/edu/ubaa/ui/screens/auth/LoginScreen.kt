@@ -223,11 +223,11 @@ fun LoginScreen(
       Spacer(modifier = Modifier.height(32.dp))
       val uriHandler = LocalUriHandler.current
       Text(
-          text = "开源项目: https://github.com/BUAASubnet/UBAA",
+          text = "开源项目: https://github.com/Paradoxofmoon/ubaa",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.primary,
           modifier =
-              Modifier.clickable { uriHandler.openUri("https://github.com/BUAASubnet/UBAA") },
+              Modifier.clickable { uriHandler.openUri("https://github.com/Paradoxofmoon/ubaa") },
       )
     }
 

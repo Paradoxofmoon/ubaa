@@ -47,7 +47,7 @@ spotless {
 }
 
 tasks.register<UploadLatestReleaseToBhpanTask>("uploadLatestReleaseToBhpan") {
-  repository.convention("BUAASubnet/UBAA")
+  repository.convention("Paradoxofmoon/ubaa")
   localPropertiesFile.convention(layout.projectDirectory.file("local.properties"))
 }
 
