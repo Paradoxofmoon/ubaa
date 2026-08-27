@@ -236,11 +236,12 @@ class AuthViewModel(
           .onFailure { error ->
             _uiState.value = _uiState.value.copy(isLoading = false)
             if (isAuthInvalidError(error)) {
-              // 会话确实失效（401 / 无效令牌）：清会话回登录；未乐观进入时走 SSO 预载/自动登录
+              // 会话确实失效（401 / 无效令牌）：清会话回登录；若保存过账号密码则自动重新登录，
+              // 避免用户再手动点一次登录；未保存凭据或需验证码时落到登录页。
               authService.clearStoredSession()
               UserDataStore.clear()
               _uiState.value = _uiState.value.copy(isLoggedIn = false, userData = null)
-              if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+              if (CredentialStore.isRememberPassword()) login() else preloadLoginState()
             } else {
               // 瞬态错误（网络/超时/服务器 5xx）：保留会话与乐观登录态，不强制登出。
               // 未乐观进入（无缓存）时尝试 SSO 预载恢复；已乐观进入则保持主界面，重试由各页自身处理。
@@ -331,12 +332,12 @@ class AuthViewModel(
           }
           .onFailure { error ->
             if (isAuthInvalidError(error)) {
-              // 会话确实失效了：清会话回登录
+              // 会话确实失效了：清会话回登录；保存过账号密码则自动重新登录
               authService.clearStoredSession()
               UserDataStore.clear()
               resetUserInfoState()
               _uiState.value = AuthUiState()
-              if (CredentialStore.isAutoLogin()) login() else preloadLoginState()
+              if (CredentialStore.isRememberPassword()) login() else preloadLoginState()
             }
             // 否则是瞬态错误（网络/超时/5xx）：保留会话状态，不强制登出
           }

@@ -11,6 +11,7 @@ import cn.edu.ubaa.api.storage.AuthTokensStore
 import cn.edu.ubaa.api.storage.ClientIdStore
 import cn.edu.ubaa.api.storage.CredentialStore
 import cn.edu.ubaa.api.storage.StoredAuthTokens
+import cn.edu.ubaa.api.storage.UserDataStore
 import cn.edu.ubaa.model.dto.LoginPreloadResponse
 import cn.edu.ubaa.model.dto.LoginResponse
 import cn.edu.ubaa.model.dto.UserInfo
@@ -39,6 +40,7 @@ class AuthViewModelInitializeAppTest {
     AuthTokensStore.clear()
     ClientIdStore.clear()
     CredentialStore.clear()
+    UserDataStore.clear()
     ConnectionModeStore.clear()
     ConnectionRuntime.clearSelectedMode()
   }
@@ -49,6 +51,7 @@ class AuthViewModelInitializeAppTest {
     CredentialStore.clear()
     AuthTokensStore.clear()
     ClientIdStore.clear()
+    UserDataStore.clear()
     ConnectionModeStore.clear()
     ConnectionRuntime.clearSelectedMode()
   }
@@ -99,13 +102,12 @@ class AuthViewModelInitializeAppTest {
 
         val state = viewModel.uiState.value
         assertEquals(1, authService.statusCalls)
-        assertEquals(0, authService.preloadCalls)
+        assertEquals(1, authService.preloadCalls)
         assertEquals(0, authService.loginCalls)
         assertTrue(authService.applyStoredTokensCalled)
         assertFalse(state.isLoading)
         assertFalse(state.isLoggedIn)
         assertNull(state.userData)
-        assertEquals("认证服务响应超时，请稍后重试", state.error)
         assertNotNull(AuthTokensStore.get())
         assertEquals("stale-access-token", AuthTokensStore.get()?.accessToken)
         assertEquals("stale-refresh-token", AuthTokensStore.get()?.refreshToken)
@@ -128,11 +130,10 @@ class AuthViewModelInitializeAppTest {
 
         val state = viewModel.uiState.value
         assertEquals(1, authService.statusCalls)
-        assertEquals(0, authService.preloadCalls)
+        assertEquals(1, authService.preloadCalls)
         assertEquals(0, authService.loginCalls)
         assertTrue(authService.applyStoredTokensCalled)
         assertFalse(state.isLoading)
-        assertEquals("认证服务响应超时，请稍后重试", state.error)
       }
 
   @Test
@@ -164,6 +165,73 @@ class AuthViewModelInitializeAppTest {
         assertFalse(state.isPreloading)
       }
 
+  @Test
+  fun `auth invalid with remembered credentials auto re-logs in`() = runTest {
+    Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+    ConnectionModeStore.save(ConnectionMode.DIRECT)
+    CredentialStore.saveCredentials("22373333", "secret")
+    CredentialStore.setRememberPassword(true)
+    val authService = InvalidSessionAuthService()
+    val viewModel =
+        AuthViewModel(
+            authService = authService,
+            userService = StubUserService(),
+        )
+
+    viewModel.initializeApp()
+    advanceUntilIdle()
+
+    assertEquals(0, authService.preloadCalls)
+    assertEquals(1, authService.loginCalls)
+    assertTrue(viewModel.uiState.value.isLoggedIn)
+    assertEquals("Test User", viewModel.uiState.value.userData?.name)
+  }
+
+  private class InvalidSessionAuthService : AuthService() {
+    var preloadCalls = 0
+      private set
+
+    var loginCalls = 0
+      private set
+
+    override fun hasPersistedSession(): Boolean = true
+
+    override fun applyStoredTokens() {}
+
+    override suspend fun preloadLoginState(): Result<LoginPreloadResponse> {
+      preloadCalls++
+      return Result.failure(IllegalStateException("preload should not be called"))
+    }
+
+    override suspend fun login(
+        username: String,
+        password: String,
+        captcha: String?,
+        execution: String?,
+    ): Result<LoginResponse> {
+      loginCalls++
+      return Result.success(
+          LoginResponse(
+              user = cn.edu.ubaa.model.dto.UserData("Test User", "22373333"),
+              accessToken = "token",
+              refreshToken = "refresh",
+              accessTokenExpiresAt = "",
+              refreshTokenExpiresAt = "",
+          )
+      )
+    }
+
+    override suspend fun getAuthStatus(): Result<SessionStatusResponse> {
+      return Result.failure(
+          ApiCallException(
+              message = "会话已失效",
+              status = HttpStatusCode.Unauthorized,
+              code = "invalid_token",
+          )
+      )
+    }
+  }
+
   private class TimeoutAuthService(
       private val hasPersistedSession: Boolean = AuthTokensStore.get() != null
   ) : AuthService() {
@@ -187,7 +255,7 @@ class AuthViewModelInitializeAppTest {
 
     override suspend fun preloadLoginState(): Result<LoginPreloadResponse> {
       preloadCalls++
-      return Result.failure(IllegalStateException("preload should not be called"))
+      return Result.success(LoginPreloadResponse(captchaRequired = false))
     }
 
     override suspend fun login(
