@@ -81,6 +81,14 @@ data class SportGrabUiState(
     val pinClientY: Int = 0,
 )
 
+/** 抢场提交失败分类：决定降级/重试/停止。 */
+internal enum class SubmitFailureKind {
+  TAKEN,
+  CAPTCHA_ERROR,
+  TRANSIENT,
+  UNKNOWN,
+}
+
 /** 智能抢场：提前保存优先意向 → 开抢日自动检测/锁定/提交/失败降级。 */
 class SportGrabViewModel(
     private val cgyyApi: CgyyApi = sportVenueDirectApi(),
@@ -90,6 +98,9 @@ class SportGrabViewModel(
   val uiState: StateFlow<SportGrabUiState> = _uiState.asStateFlow()
 
   private var monitorJob: Job? = null
+
+  /** 本次抢场已拉取验证码次数（自动 + 手动刷新），超上限即停止，防止触发服务端验证码风控。 */
+  private var captchaPullCount = 0
 
   init {
     loadDrafts()
@@ -292,6 +303,7 @@ class SportGrabViewModel(
           message = "抢场准备中：检测「${draft.date}」开抢…",
       )
     }
+    captchaPullCount = 0
     startMonitor()
   }
 
@@ -371,25 +383,8 @@ class SportGrabViewModel(
   /** 用最新 dayInfo 解析各意向（spaceId+时间label → 真实 timeId），并自动锁定最高优先级可用项。 */
   private fun resolveAndPick(info: CgyyDayInfoResponse) {
     val draft = _uiState.value.grabDraft ?: return
-    val statuses =
-        draft.options.mapIndexed { i, o ->
-          val space = info.spaces.firstOrNull { it.spaceId == o.spaceId }
-          val slot =
-              space?.slots?.firstOrNull { s ->
-                info.timeSlots.firstOrNull { it.id == s.timeId }?.beginTime == o.timeLabel
-              }
-          GrabOptionStatus(
-              index = i,
-              spaceId = o.spaceId,
-              timeLabel = o.timeLabel,
-              displayLabel = o.displayLabel,
-              resolvedTimeId = slot?.timeId,
-              isReservable = slot?.isReservable == true,
-              isTaken = slot != null && !slot.isReservable,
-              isUnavailable = slot == null,
-              isActive = i == _uiState.value.activeOptionIndex,
-          )
-        }
+    val prev = _uiState.value.optionStatuses.associateBy { it.index }
+    val statuses = buildGrabStatuses(info, draft.options, prev, _uiState.value.activeOptionIndex)
     _uiState.update { it.copy(optionStatuses = statuses) }
 
     val s = _uiState.value
@@ -418,6 +413,20 @@ class SportGrabViewModel(
 
   /** 拉取新验证码（仅在需要时调用）。 */
   private fun fetchCaptcha() {
+    if (captchaPullCount >= MAX_CAPTCHA_PULLS) {
+      monitorJob?.cancel()
+      _uiState.update {
+        it.copy(
+            grabActive = false,
+            activeOptionIndex = -1,
+            captcha = null,
+            captchaImage = null,
+            message = "验证码尝试次数过多（已达 ${MAX_CAPTCHA_PULLS} 次），已停止抢场防止触发风控",
+        )
+      }
+      return
+    }
+    captchaPullCount++
     _uiState.update {
       it.copy(
           isCaptchaLoading = true,
@@ -633,14 +642,25 @@ class SportGrabViewModel(
       )
     }
     val text = rawMessage
-    val taken =
-        listOf("已被定", "已被预约", "已预约", "已被抢", "已被他人", "已满", "已占用", "该时段", "重复", "冲突", "不可用").any {
-          it in text
+    val kind = classifySubmitFailure(text)
+    when (kind) {
+      SubmitFailureKind.CAPTCHA_ERROR -> {
+        // 验证码/风控类失败：不再自动重拉验证码（会反复弹窗直至服务端验证码上限），直接停止并提示。
+        monitorJob?.cancel()
+        _uiState.update {
+          it.copy(
+              activeOptionIndex = -1,
+              grabActive = false,
+              captcha = null,
+              captchaImage = null,
+              message = "验证码异常（${text}），已停止抢场，请稍后重试",
+          )
         }
-    val network = listOf("网络", "超时", "timeout", "连接", "请稍后重试", "系统忙").any { it in text }
-    when {
-      taken || (!network && idx >= 0) -> {
-        // 被抢 或 未知拒绝 → 该意向记一次失败并降级
+      }
+      SubmitFailureKind.TAKEN,
+      SubmitFailureKind.UNKNOWN -> {
+        // 被抢 或 未知拒绝 → 该意向记一次失败并降级（failCount 在 resolveAndPick 中保留，超 2 次视为不可用）
+        val taken = kind == SubmitFailureKind.TAKEN
         _uiState.update {
           it.copy(
               optionStatuses =
@@ -658,7 +678,7 @@ class SportGrabViewModel(
         }
         recheckAndPick()
       }
-      else -> {
+      SubmitFailureKind.TRANSIENT -> {
         // 网络/瞬态：保留当前意向，重试
         _uiState.update { it.copy(message = "提交失败（${text}），重试当前意向") }
         fetchCaptcha()
@@ -697,7 +717,60 @@ class SportGrabViewModel(
   private fun randomDelay(minMs: Long, maxMs: Long): Long =
       minMs + (Math.random() * (maxMs - minMs)).toLong()
 
-  private companion object {
+  internal companion object {
     const val GRAB_TIMEOUT_MINUTES = 15L
+    /** 单次抢场最多拉取验证码次数（自动+手动），超过即停止，避免触发服务端验证码风控上限。 */
+    const val MAX_CAPTCHA_PULLS = 10
+
+    /**
+     * 重建意向状态（dayInfo 刷新后）。
+     *
+     * 关键：保留 [GrabOptionStatus.failCount] 与服务端已确认的 [GrabOptionStatus.isTaken]—— dayInfo
+     * 刷新（或提交失败时用的旧快照）可能短暂仍显示可抢，若清零会导致同一意向被无限重选、 反复弹验证码直到服务端验证码上限。服务端判定优先级高于轮询快照。
+     */
+    internal fun buildGrabStatuses(
+        info: CgyyDayInfoResponse,
+        options: List<PriorityOption>,
+        prev: Map<Int, GrabOptionStatus>,
+        activeIndex: Int,
+    ): List<GrabOptionStatus> =
+        options.mapIndexed { i, o ->
+          val space = info.spaces.firstOrNull { it.spaceId == o.spaceId }
+          val slot =
+              space?.slots?.firstOrNull { s ->
+                info.timeSlots.firstOrNull { it.id == s.timeId }?.beginTime == o.timeLabel
+              }
+          val prevStatus = prev[i]
+          val taken = prevStatus?.isTaken == true || (slot != null && !slot.isReservable)
+          GrabOptionStatus(
+              index = i,
+              spaceId = o.spaceId,
+              timeLabel = o.timeLabel,
+              displayLabel = o.displayLabel,
+              resolvedTimeId = slot?.timeId,
+              isReservable = slot?.isReservable == true && !taken,
+              isTaken = taken,
+              isUnavailable = slot == null || prevStatus?.isUnavailable == true,
+              isActive = i == activeIndex,
+              failCount = prevStatus?.failCount ?: 0,
+          )
+        }
+
+    /** 提交失败消息分类（中文字段匹配）：被占 / 验证码风控 / 网络瞬态 / 未知。 */
+    internal fun classifySubmitFailure(text: String): SubmitFailureKind {
+      val taken =
+          listOf("已被定", "已被预约", "已预约", "已被抢", "已被他人", "已满", "已占用", "该时段", "重复", "冲突", "不可用").any {
+            it in text
+          }
+      val network = listOf("网络", "超时", "timeout", "连接", "请稍后重试", "系统忙").any { it in text }
+      val captchaError =
+          listOf("验证码", "captcha", "频繁", "次数过多", "操作频繁", "上限", "风控").any { it in text }
+      return when {
+        captchaError -> SubmitFailureKind.CAPTCHA_ERROR
+        taken -> SubmitFailureKind.TAKEN
+        network -> SubmitFailureKind.TRANSIENT
+        else -> SubmitFailureKind.UNKNOWN
+      }
+    }
   }
 }

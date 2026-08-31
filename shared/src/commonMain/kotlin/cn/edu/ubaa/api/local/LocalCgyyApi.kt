@@ -278,9 +278,15 @@ internal class LocalCgyyApiBackend(
       execute("${venueLabel}预约提交失败，请稍后重试") { _, client ->
         val envelope = client.submitSportOrder(request)
         val data = envelope.data?.jsonObject
+        // venue-server 业务失败走非 200，由 requestJson 抛异常；此处 code==200。
+        // 成功 = data 含 id/tradeNo（实抓结构），或同验证码协议的 data.repCode=="0000"；
+        // 若 code==200 但业务失败（data.success=false / repCode!=0000 / 无订单字段），如实上报失败。
+        val repCode = data?.get("repCode")?.jsonPrimitive?.contentOrNull
+        val innerMsg = data?.get("repMsg")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        val hasOrder = data?.get("id") != null || data?.get("tradeNo") != null
         CgyySportOrderSubmitResponse(
-            success = true,
-            message = envelope.message.takeIf { it.isNotBlank() },
+            success = hasOrder || repCode == "0000",
+            message = innerMsg ?: envelope.message.takeIf { it.isNotBlank() },
             orderId = data?.get("id")?.jsonPrimitive?.contentOrNull?.toLongOrNull(),
             tradeNo = data?.get("tradeNo")?.jsonPrimitive?.contentOrNull,
         )
