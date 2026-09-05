@@ -19,8 +19,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** shsd.buaa.edu.cn 电费购电后端。直连 HTTP，不依赖 shared 抽象层。 */
-private const val BASE_URL = "https://shsd.buaa.edu.cn"
+/**
+ * shsd.buaa.edu.cn 电费购电后端。直连 HTTP，不依赖 shared 抽象层。
+ *
+ * 必须用 http（80 端口）而非 https：校园网（BUAA-Mobile）防火墙定向丢弃到该主机 443 端口的出站 TCP（内网/公网 IP 均被拦，实测浏览器 https
+ * 也连不上），但 80 端口 校内可达（实测 ESTABLISHED）。接口无敏感凭据（电费无需登录态），http 是校内可用的前提。
+ */
+private const val BASE_URL = "http://shsd.buaa.edu.cn"
 
 // ===== DTO =====
 
