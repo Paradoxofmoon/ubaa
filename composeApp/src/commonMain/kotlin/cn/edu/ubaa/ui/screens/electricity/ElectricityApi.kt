@@ -94,7 +94,7 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
       }
 
   /** 拉取全校「校区→楼宇→楼层→房间→电表」级联数据。 */
-  suspend fun fetchMeterTree(refresh: Boolean = false): List<ElectricityMeter> {
+  suspend fun fetchMeterTree(refresh: Boolean = false): List<ElectricityMeter> = withNetworkHint {
     val response =
         client.get("$BASE_URL/PubBuaa/QueryIdData") {
           parameter("refresh", refresh)
@@ -104,7 +104,7 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
       throw ElectricityException("用电查询数据加载失败（${response.status.value}）")
     }
     val body = response.bodyAsText()
-    return try {
+    try {
       json.decodeFromString<List<ElectricityMeter>>(body)
     } catch (e: Exception) {
       throw ElectricityException(
@@ -114,7 +114,7 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
   }
 
   /** 查询电表信息与余额。 */
-  suspend fun fetchMeterInfo(meterId: String): ElectricityMeterInfo {
+  suspend fun fetchMeterInfo(meterId: String): ElectricityMeterInfo = withNetworkHint {
     val response =
         client.get("$BASE_URL/BuaaPay/Meter") {
           parameter("id", meterId)
@@ -126,7 +126,7 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
       )
     }
     val body = response.bodyAsText()
-    return try {
+    try {
       json.decodeFromString<ElectricityMeterInfo>(body)
     } catch (e: Exception) {
       throw ElectricityException(
@@ -141,7 +141,7 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
    * @param meterId 电表 id（/BuaaPay/Meter 返回的 id）。
    * @param writePower 下发电量（整数度，必须 >= 1）。
    */
-  suspend fun submitPay(meterId: Int, writePower: Int): ElectricityPayResult {
+  suspend fun submitPay(meterId: Int, writePower: Int): ElectricityPayResult = withNetworkHint {
     val response =
         client.submitForm(
             url = "$BASE_URL/BuaaPay/Pay",
@@ -154,12 +154,12 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
           header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
         }
     if (response.status != HttpStatusCode.OK) {
-      return ElectricityPayResult.Failure(
+      return@withNetworkHint ElectricityPayResult.Failure(
           "下单失败（${response.status.value}）：${response.bodyAsText().take(80)}"
       )
     }
     val payUrl = response.bodyAsText().trim().trim('"', '\'')
-    return if (payUrl.startsWith("http://") || payUrl.startsWith("https://")) {
+    if (payUrl.startsWith("http://") || payUrl.startsWith("https://")) {
       ElectricityPayResult.Success(payUrl)
     } else {
       ElectricityPayResult.Failure(payUrl.ifBlank { "下单失败，请稍后重试" })
@@ -168,15 +168,36 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
 
   /** 取消未完成的支付订单。 */
   suspend fun cancelPay(id: Int, serial: String) {
-    val response =
-        client.delete("$BASE_URL/BuaaPay/CancelPay") {
-          parameter("id", id)
-          parameter("serial", serial)
-        }
-    if (response.status != HttpStatusCode.OK) {
-      throw ElectricityException("取消订单失败（${response.status.value}）")
+    withNetworkHint {
+      val response =
+          client.delete("$BASE_URL/BuaaPay/CancelPay") {
+            parameter("id", id)
+            parameter("serial", serial)
+          }
+      if (response.status != HttpStatusCode.OK) {
+        throw ElectricityException("取消订单失败（${response.status.value}）")
+      }
     }
   }
+
+  /**
+   * 连接超时的友好提示：shsd.buaa.edu.cn 是校园内网主机（10.251.x.x），校外网络必然连不上， 把 Ktor 原始 ConnectTimeout
+   * 异常翻译成明确的中文提示。
+   */
+  private suspend fun <T> withNetworkHint(block: suspend () -> T): T =
+      try {
+        block()
+      } catch (e: Exception) {
+        val simpleName = e::class.simpleName.orEmpty()
+        val msg = e.message.orEmpty()
+        if (
+            simpleName.contains("ConnectTimeout", ignoreCase = true) ||
+                msg.startsWith("Connect timeout", ignoreCase = true)
+        ) {
+          throw ElectricityException("电费服务需要校园网（校内 WiFi）才能访问，当前网络无法连接，请连接校园网后重试")
+        }
+        throw e
+      }
 
   fun close() {
     client.close()
