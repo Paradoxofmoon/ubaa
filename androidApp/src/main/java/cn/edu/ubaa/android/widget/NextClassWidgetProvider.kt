@@ -77,17 +77,21 @@ class NextClassWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.widget_empty, "打开 App 同步今日课表")
         setRowVisibility(views, R.id.class1_row, false)
         setRowVisibility(views, R.id.class2_row, false)
+        setRowVisibility(views, R.id.widget_countdown, false)
       } else if (next.isEmpty()) {
         views.setViewVisibility(R.id.widget_empty, android.view.View.VISIBLE)
         views.setTextViewText(R.id.widget_empty, "今天没有课程安排")
         setRowVisibility(views, R.id.class1_row, false)
         setRowVisibility(views, R.id.class2_row, false)
+        setRowVisibility(views, R.id.widget_countdown, false)
       } else {
         views.setViewVisibility(R.id.widget_empty, android.view.View.GONE)
-        // 第 1 节
+        // 第 1 节：倒计时固定到标题右侧（widget_countdown），meta 只留地点+时间，避免长内容挤出
         setRowVisibility(views, R.id.class1_row, true)
-        populate(views, R.id.class1_row, R.id.class1_title, R.id.class1_meta, next[0])
-        // 第 2 节
+        populate(views, R.id.class1_row, R.id.class1_title, R.id.class1_meta, next[0], false)
+        views.setTextViewText(R.id.widget_countdown, describe(next[0].minutesUntil))
+        setRowVisibility(views, R.id.widget_countdown, true)
+        // 第 2 节：保持原样（meta 含倒计时）
         if (next.size >= 2) {
           setRowVisibility(views, R.id.class2_row, true)
           populate(views, R.id.class2_row, R.id.class2_title, R.id.class2_meta, next[1])
@@ -104,12 +108,18 @@ class NextClassWidgetProvider : AppWidgetProvider() {
         titleId: Int,
         metaId: Int,
         cv: ClassView,
+        includeCountdown: Boolean = true,
     ) {
       views.setTextViewText(titleId, cv.name)
       val timeStr = "${cv.begin} - ${cv.end}"
       val countdown = describe(cv.minutesUntil)
       val meta =
-          listOfNotNull(cv.place?.takeIf { it.isNotBlank() }, timeStr, countdown).joinToString("  ")
+          listOfNotNull(
+                  cv.place?.takeIf { it.isNotBlank() },
+                  timeStr,
+                  if (includeCountdown) countdown else null,
+              )
+              .joinToString("  ")
       views.setTextViewText(metaId, meta)
     }
 
