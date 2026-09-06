@@ -13,6 +13,7 @@ import cn.edu.ubaa.api.storage.CgyyReservationFormStore
 import cn.edu.ubaa.api.storage.PreSelectionStore
 import cn.edu.ubaa.api.storage.PriorityDraft
 import cn.edu.ubaa.api.storage.PriorityOption
+import cn.edu.ubaa.model.dto.CgyyBuddyDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
@@ -58,6 +59,14 @@ data class SportGrabUiState(
     val isReferenceLoading: Boolean = false,
     val referenceError: String? = null,
     val editingDraft: PriorityDraft? = null,
+    // ---- 同伴 ----
+    val grabBuddies: List<CgyyBuddyDto> = emptyList(),
+    val isGrabBuddiesLoading: Boolean = false,
+    val grabBuddyError: String? = null,
+    val grabBuddyAddUid: String = "",
+    val isAddingGrabBuddy: Boolean = false,
+    /** 同伴添加成功计数（UI 用它关添加弹窗）。 */
+    val buddyAddTick: Int = 0,
     // ---- 抢场模式 ----
     val grabActive: Boolean = false,
     val grabDraft: PriorityDraft? = null,
@@ -201,12 +210,14 @@ class SportGrabViewModel(
           grabActive = false,
       )
     }
+    loadGrabBuddies()
   }
 
   fun editDraft(id: String) {
     val draft = PreSelectionStore.get(id)
     if (draft != null) {
       _uiState.update { it.copy(editingDraft = draft, grabActive = false) }
+      loadGrabBuddies()
     }
   }
 
@@ -250,6 +261,94 @@ class SportGrabViewModel(
   fun updateDraftPhone(phone: String) {
     val editing = _uiState.value.editingDraft ?: return
     _uiState.update { it.copy(editingDraft = editing.copy(phone = phone)) }
+  }
+
+  // ===================== 同伴 =====================
+
+  /** 加载已保存的同伴列表（进入预选编辑器时自动调用一次；forceRefresh 用于手动刷新）。 */
+  fun loadGrabBuddies(forceRefresh: Boolean = false) {
+    val s = _uiState.value
+    if (!forceRefresh && s.grabBuddies.isNotEmpty()) return
+    _uiState.update { it.copy(isGrabBuddiesLoading = true, grabBuddyError = null) }
+    viewModelScope.launch {
+      cgyyApi
+          .getBuddies()
+          .onSuccess { list ->
+            _uiState.update { it.copy(isGrabBuddiesLoading = false, grabBuddies = list.content) }
+          }
+          .onFailure { e ->
+            _uiState.update {
+              it.copy(
+                  isGrabBuddiesLoading = false,
+                  grabBuddyError = e.message ?: "同伴列表加载失败",
+              )
+            }
+          }
+    }
+  }
+
+  /** 勾选/取消一个同伴（最多 2 位，含本人共 3 人，避免自动提交被后端拒单）。 */
+  fun toggleGrabBuddy(buddyId: Int) {
+    val editing = _uiState.value.editingDraft ?: return
+    val current = editing.buddyIds
+    val next =
+        if (buddyId in current) current - buddyId
+        else if (current.size >= MAX_GRAB_BUDDIES) {
+          _uiState.update { it.copy(message = "最多选择 $MAX_GRAB_BUDDIES 位同伴（含本人最多 3 人）") }
+          return
+        } else current + buddyId
+    _uiState.update { it.copy(editingDraft = editing.copy(buddyIds = next)) }
+  }
+
+  fun updateGrabBuddyUid(value: String) {
+    _uiState.update { it.copy(grabBuddyAddUid = value) }
+  }
+
+  /** 按学号添加同伴（与手动下单页同接口）。 */
+  fun addGrabBuddyByUid() {
+    val uid = _uiState.value.grabBuddyAddUid.trim()
+    if (uid.isEmpty()) return
+    _uiState.update { it.copy(isAddingGrabBuddy = true, grabBuddyError = null) }
+    viewModelScope.launch {
+      cgyyApi
+          .addBuddy(uid)
+          .onSuccess { list ->
+            _uiState.update {
+              it.copy(
+                  isAddingGrabBuddy = false,
+                  grabBuddies = list.content,
+                  grabBuddyAddUid = "",
+                  buddyAddTick = it.buddyAddTick + 1,
+              )
+            }
+          }
+          .onFailure { e ->
+            _uiState.update {
+              it.copy(
+                  isAddingGrabBuddy = false,
+                  grabBuddyError = e.message ?: "同伴添加失败",
+              )
+            }
+          }
+    }
+  }
+
+  /** 删除一个同伴（若已勾选则同步从草稿移除）。 */
+  fun deleteGrabBuddy(buddyId: Int) {
+    viewModelScope.launch {
+      cgyyApi
+          .deleteBuddy(buddyId)
+          .onSuccess { list ->
+            val editing = _uiState.value.editingDraft
+            _uiState.update {
+              it.copy(
+                  grabBuddies = list.content,
+                  editingDraft = editing?.copy(buddyIds = editing.buddyIds - buddyId),
+              )
+            }
+          }
+          .onFailure { e -> _uiState.update { it.copy(grabBuddyError = e.message ?: "同伴删除失败") } }
+    }
   }
 
   fun saveDraft() {
@@ -592,8 +691,7 @@ class SportGrabViewModel(
             orderPrice = orderFee,
             orderPin = orderPin,
             phone = draft.phone,
-            buddyUids = "",
-            buddyIds = "",
+            buddyIds = draft.buddyIds.joinToString(","),
             captchaVerification = check.captchaVerification,
             captchaToken = check.captchaToken,
         )
@@ -721,6 +819,8 @@ class SportGrabViewModel(
     const val GRAB_TIMEOUT_MINUTES = 15L
     /** 单次抢场最多拉取验证码次数（自动+手动），超过即停止，避免触发服务端验证码风控上限。 */
     const val MAX_CAPTCHA_PULLS = 10
+    /** 抢场随单提交的同伴上限（含本人共 3 人，与场馆预约页一致）。 */
+    const val MAX_GRAB_BUDDIES = 2
 
     /**
      * 重建意向状态（dayInfo 刷新后）。

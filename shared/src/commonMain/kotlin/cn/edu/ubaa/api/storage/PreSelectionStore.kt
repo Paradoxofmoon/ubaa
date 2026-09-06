@@ -26,6 +26,8 @@ data class PriorityDraft(
     val phone: String,
     val purposeType: Int? = null,
     val options: List<PriorityOption> = emptyList(),
+    /** 随单提交的同伴（venue-server buddy id 列表，逗号拼接进 buddyIds）。 */
+    val buddyIds: List<Int> = emptyList(),
     val createdAt: Long = 0L,
 )
 
