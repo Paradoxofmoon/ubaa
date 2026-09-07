@@ -41,6 +41,8 @@ data class GrabOptionStatus(
     val displayLabel: String,
     /** 抢场日解析出的真实 timeId；null = 未开放/解析失败。 */
     val resolvedTimeId: Int? = null,
+    /** 场馆空间组 id（下单 reservationOrderJson 需要，缺失会报"参数异常，未获取到预约时间"）。 */
+    val venueSpaceGroupId: Int? = null,
     val isReservable: Boolean = false,
     val isTaken: Boolean = false,
     val isUnavailable: Boolean = false,
@@ -683,7 +685,12 @@ class SportGrabViewModel(
             ?.slots
             ?.firstOrNull { it.timeId == timeId }
     val orderFee = slot?.orderFee ?: 0.0
-    val reservationOrderJson = "[{\"spaceId\":\"${active.spaceId}\",\"timeId\":\"$timeId\"}]"
+    // 与手动下单一致：venueSpaceGroupId 缺失会触发服务端"参数异常，未获取到预约时间"
+    val reservationOrderJson = buildString {
+      append("{\"spaceId\":\"${active.spaceId}\",\"timeId\":\"$timeId\"")
+      active.venueSpaceGroupId?.let { append(",\"venueSpaceGroupId\":\"$it\"") }
+      append("}")
+    }
     val orderPin =
         runCatching {
               encryptCgyyOrderPin(
@@ -886,6 +893,7 @@ class SportGrabViewModel(
               timeLabel = o.timeLabel,
               displayLabel = o.displayLabel,
               resolvedTimeId = slot?.timeId,
+              venueSpaceGroupId = space?.venueSpaceGroupId,
               isReservable = slot?.isReservable == true && !taken,
               isTaken = taken,
               isUnavailable = slot == null || prevStatus?.isUnavailable == true,

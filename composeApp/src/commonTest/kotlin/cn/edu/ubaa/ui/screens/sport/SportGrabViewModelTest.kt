@@ -127,6 +127,44 @@ class SportGrabViewModelTest {
   }
 
   @Test
+  fun `venueSpaceGroupId is resolved from dayInfo space for submit`() {
+    // 回归：抢场提交缺 venueSpaceGroupId 时服务端报"参数异常，未获取到预约时间"
+    val info =
+        CgyyDayInfoResponse(
+            venueSiteId = 1,
+            reservationDate = "2026-08-30",
+            timeSlots = listOf(timeSlot),
+            spaces =
+                listOf(
+                    CgyySpaceAvailabilityDto(
+                        spaceId = 10,
+                        spaceName = "A",
+                        venueSiteId = 1,
+                        venueSpaceGroupId = 77,
+                        slots =
+                            listOf(
+                                CgyySlotStatusDto(
+                                    timeId = 100,
+                                    reservationStatus = 1,
+                                    isReservable = true,
+                                )
+                            ),
+                    )
+                ),
+        )
+
+    val rebuilt =
+        SportGrabViewModel.buildGrabStatuses(
+            info,
+            listOf(option()),
+            emptyMap(),
+            activeIndex = -1,
+        )
+
+    assertEquals(77, rebuilt[0].venueSpaceGroupId)
+  }
+
+  @Test
   fun `classifySubmitFailure detects captcha and rate-limit messages`() {
     assertEquals(SubmitFailureKind.CAPTCHA_ERROR, SportGrabViewModel.classifySubmitFailure("验证码错误"))
     assertEquals(
