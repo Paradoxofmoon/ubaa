@@ -74,6 +74,10 @@ data class SportGrabUiState(
     val optionStatuses: List<GrabOptionStatus> = emptyList(),
     val windowOpened: Boolean = false,
     val activeOptionIndex: Int = -1,
+    /** 连续提交失败次数（不含"已被抢"降级；>= MAX_CONSECUTIVE_FAILURES 即停止，防止反复弹验证码）。 */
+    val consecutiveSubmitFailures: Int = 0,
+    /** 用户关闭验证码后的自动重锁冷却截止（epoch ms），冷却期内不自动弹新验证码。 */
+    val dismissCooldownUntil: Long = 0,
     // ---- 验证码 ----
     val captcha: CgyyClickWordCaptchaDto? = null,
     val captchaImage: CgyyCaptchaImageData? = null,
@@ -390,6 +394,7 @@ class SportGrabViewModel(
           windowOpened = false,
           grabDayInfo = null,
           activeOptionIndex = -1,
+          consecutiveSubmitFailures = 0,
           captcha = null,
           captchaImage = null,
           captchaPoints = emptyList(),
@@ -487,7 +492,13 @@ class SportGrabViewModel(
     _uiState.update { it.copy(optionStatuses = statuses) }
 
     val s = _uiState.value
-    if (s.activeOptionIndex < 0 && !s.isCaptchaLoading && !s.isSubmitting && s.captcha == null) {
+    if (
+        s.activeOptionIndex < 0 &&
+            !s.isCaptchaLoading &&
+            !s.isSubmitting &&
+            s.captcha == null &&
+            Clock.System.now().toEpochMilliseconds() >= s.dismissCooldownUntil
+    ) {
       val candidate =
           statuses.firstOrNull {
             it.isReservable && !it.isTaken && !it.isUnavailable && it.failCount < 2
@@ -573,6 +584,8 @@ class SportGrabViewModel(
           isCaptchaLoading = false,
           captchaError = null,
           activeOptionIndex = -1,
+          // 冷却期内不自动重锁，避免关闭后 2~4 秒又被监控循环弹出来
+          dismissCooldownUntil = Clock.System.now().toEpochMilliseconds() + DISMISS_COOLDOWN_MS,
       )
     }
   }
@@ -709,6 +722,7 @@ class SportGrabViewModel(
                     isSubmitting = false,
                     result = result.tradeNo ?: "成功",
                     grabActive = false,
+                    consecutiveSubmitFailures = 0,
                     message = "抢场成功！订单号 ${result.tradeNo ?: "-"}",
                 )
               }
@@ -722,23 +736,15 @@ class SportGrabViewModel(
 
   /**
    * 提交失败处理：
-   * - 「已被定/已被预约/被抢」→ 标记该意向，自动降级到下一个可用。
-   * - 网络/瞬态错误 → 保留当前意向，重拉验证码重试。
-   * - 其他（未知拒绝）→ 连续 2 次失败视为该意向不可用，降级。
+   * - 「已被定/已被预约/被抢」→ 标记该意向并降级到下一个可用（正常的多意向抢场，不打断）。
+   * - 验证码/风控 → 直接停止。
+   * - 其他（瞬态/未知）→ 连续 [MAX_CONSECUTIVE_FAILURES] 次即停止并展示真实原因， 防止对同一意向无限重拉验证码（此前 TRANSIENT 不记
+   *   failCount 直接重试，会反复弹窗到验证码上限）。
    */
   private fun handleSubmitFailure(rawMessage: String) {
     val s = _uiState.value
     val active = s.optionStatuses.firstOrNull { it.index == s.activeOptionIndex }
     val idx = active?.index ?: -1
-    _uiState.update {
-      it.copy(
-          isSubmitting = false,
-          captcha = null,
-          captchaImage = null,
-          captchaPoints = emptyList(),
-          captchaCheck = null,
-      )
-    }
     val text = rawMessage
     val kind = classifySubmitFailure(text)
     when (kind) {
@@ -751,35 +757,63 @@ class SportGrabViewModel(
               grabActive = false,
               captcha = null,
               captchaImage = null,
-              message = "验证码异常（${text}），已停止抢场，请稍后重试",
+              message = "验证码异常（$text），已停止抢场，请稍后重试",
           )
         }
       }
-      SubmitFailureKind.TAKEN,
-      SubmitFailureKind.UNKNOWN -> {
-        // 被抢 或 未知拒绝 → 该意向记一次失败并降级（failCount 在 resolveAndPick 中保留，超 2 次视为不可用）
-        val taken = kind == SubmitFailureKind.TAKEN
+      SubmitFailureKind.TAKEN -> {
+        // 被抢 → 标记该意向并降级（这是正常的多意向降级路径，不计入连续失败，避免误停）
         _uiState.update {
           it.copy(
+              isSubmitting = false,
+              captcha = null,
+              captchaImage = null,
+              captchaPoints = emptyList(),
+              captchaCheck = null,
               optionStatuses =
                   it.optionStatuses.map { st ->
-                    if (st.index == idx)
-                        st.copy(
-                            failCount = st.failCount + 1,
-                            isTaken = if (taken) true else st.isTaken,
-                        )
+                    if (st.index == idx) st.copy(failCount = st.failCount + 1, isTaken = true)
                     else st
                   },
               activeOptionIndex = -1,
-              message = "意向${idx + 1}提交失败（${text}），自动切换下一个",
+              message = "意向${idx + 1}已被预约，自动切换下一个",
           )
         }
         recheckAndPick()
       }
-      SubmitFailureKind.TRANSIENT -> {
-        // 网络/瞬态：保留当前意向，重试
-        _uiState.update { it.copy(message = "提交失败（${text}），重试当前意向") }
-        fetchCaptcha()
+      SubmitFailureKind.TRANSIENT,
+      SubmitFailureKind.UNKNOWN -> {
+        // 瞬态/未知 → 连续失败守卫：>= 上限即停止（展示真实服务端文案，方便定位）；否则重试/降级。
+        val consecutive = s.consecutiveSubmitFailures + 1
+        _uiState.update {
+          it.copy(
+              isSubmitting = false,
+              captcha = null,
+              captchaImage = null,
+              captchaPoints = emptyList(),
+              captchaCheck = null,
+              consecutiveSubmitFailures = consecutive,
+              message = "提交失败（$text）",
+          )
+        }
+        if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
+          monitorJob?.cancel()
+          _uiState.update {
+            it.copy(
+                activeOptionIndex = -1,
+                grabActive = false,
+                message = "连续 $consecutive 次提交失败（最后：$text），已停止抢场，请查看原因后重试",
+            )
+          }
+        } else {
+          if (kind == SubmitFailureKind.TRANSIENT) {
+            // 瞬态：保留当前意向重试一次（下一轮连续失败守卫会拦住）
+            fetchCaptcha()
+          } else {
+            // 未知：降级到下一个意向
+            recheckAndPick()
+          }
+        }
       }
     }
   }
@@ -819,6 +853,10 @@ class SportGrabViewModel(
     const val GRAB_TIMEOUT_MINUTES = 15L
     /** 单次抢场最多拉取验证码次数（自动+手动），超过即停止，避免触发服务端验证码风控上限。 */
     const val MAX_CAPTCHA_PULLS = 10
+    /** 连续提交失败（瞬态/未知，不含"已被抢"降级）超过该次数即停止抢场，防止反复弹验证码死循环。 */
+    const val MAX_CONSECUTIVE_FAILURES = 2
+    /** 关闭验证码后自动重锁的冷却时长（毫秒）。 */
+    const val DISMISS_COOLDOWN_MS = 20_000L
     /** 抢场随单提交的同伴上限（含本人共 3 人，与场馆预约页一致）。 */
     const val MAX_GRAB_BUDDIES = 2
 
@@ -862,7 +900,9 @@ class SportGrabViewModel(
           listOf("已被定", "已被预约", "已预约", "已被抢", "已被他人", "已满", "已占用", "该时段", "重复", "冲突", "不可用").any {
             it in text
           }
-      val network = listOf("网络", "超时", "timeout", "连接", "请稍后重试", "系统忙").any { it in text }
+      // 瞬态只认强信号：通用「请稍后重试」等文案不算（否则把业务失败误判成重试 → 反复弹验证码）
+      val network =
+          listOf("网络", "超时", "timeout", "无法连接", "连接失败", "系统忙", "系统繁忙", "服务器异常").any { it in text }
       val captchaError =
           listOf("验证码", "captcha", "频繁", "次数过多", "操作频繁", "上限", "风控").any { it in text }
       return when {

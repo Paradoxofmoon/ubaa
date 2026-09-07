@@ -151,6 +151,30 @@ class SportGrabViewModelTest {
     assertEquals(SubmitFailureKind.UNKNOWN, SportGrabViewModel.classifySubmitFailure("发生未知错误"))
   }
 
+  @Test
+  fun `generic retry wording no longer misclassified as transient`() {
+    // 回归：此前「请稍后重试」会被判成 TRANSIENT → 对同一意向无限重拉验证码（死循环到上限）。
+    // 收紧后：仅业务失败文案（无 taken/网络强信号）→ UNKNOWN（降级下一意向），不再重试同一意向。
+    assertEquals(
+        SubmitFailureKind.UNKNOWN,
+        SportGrabViewModel.classifySubmitFailure("预约失败，请稍后重试"),
+    )
+    assertEquals(
+        SubmitFailureKind.UNKNOWN,
+        SportGrabViewModel.classifySubmitFailure("操作失败，请稍后再试"),
+    )
+    // 被抢文案即使带「请稍后重试」也应优先判 TAKEN
+    assertEquals(
+        SubmitFailureKind.TAKEN,
+        SportGrabViewModel.classifySubmitFailure("该时段已被预约，请稍后重试"),
+    )
+    // 强网络信号仍是 TRANSIENT
+    assertEquals(
+        SubmitFailureKind.TRANSIENT,
+        SportGrabViewModel.classifySubmitFailure("网络异常，无法连接服务器"),
+    )
+  }
+
   // ===================== 同伴 =====================
 
   private fun site() =
