@@ -10,6 +10,8 @@ import cn.edu.ubaa.model.dto.CgyyBuddyListResponse
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
+import cn.edu.ubaa.model.dto.CgyyEntryCodeView
+import cn.edu.ubaa.model.dto.CgyyEntryOrderView
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrderDto
 import cn.edu.ubaa.model.dto.CgyyOrderPayResult
@@ -336,6 +338,11 @@ internal class LocalCgyyApiBackend(
         mapPayResult(client.paySportOrder(tradeNo, payType))
       }
 
+  override suspend fun getVenueEntryCode(): Result<CgyyEntryCodeView> =
+      execute("${venueLabel}预约码获取失败，请稍后重试") { _, client ->
+        mapEntryCode(client.getVenueEntryCode())
+      }
+
   private suspend fun currentClient(username: String): LocalCgyyClient =
       clientMutex.withLock {
         clientCache.getOrPut(username) {
@@ -362,10 +369,12 @@ internal class LocalCgyyApiBackend(
     return try {
       Result.success(block(username, currentClient(username)))
     } catch (error: Exception) {
-      if (defaultMessage.contains("预约提交")) {
-        // 诊断：下单失败异常类型（网络/IO/非JSON 等），说明为何兜底文案
+      if (defaultMessage.contains("预约提交") || defaultMessage.contains("预约码")) {
+        // 诊断：下单/预约码失败异常类型（网络/IO/非JSON 等），说明为何兜底文案
         println(
-            "UBAA_GRAB submit exception ${error::class.simpleName}: " + error.message?.take(200)
+            "UBAA_GRAB ${if (defaultMessage.contains("预约码")) "entrycode" else "submit"} " +
+                "exception ${error::class.simpleName}: " +
+                error.message?.take(200)
         )
       }
       Result.failure(mapFailure(error, defaultMessage))
@@ -469,6 +478,38 @@ internal class LocalCgyyApiBackend(
         payFee = obj["payFee"]?.jsonPrimitive?.doubleOrNull,
         payType = obj["payType"]?.jsonPrimitive?.intOrNull,
         remainSecond = obj["remainSecond"]?.jsonPrimitive?.intOrNull,
+    )
+  }
+
+  private fun mapEntryCode(data: JsonElement?): CgyyEntryCodeView {
+    val obj = data?.jsonObject ?: return CgyyEntryCodeView()
+    // 注意：服务端对缺省字段返回 JSON null（JsonNull），不能用 ?.jsonPrimitive/.jsonObject（会抛异常）
+    fun text(key: String): String? = (obj[key] as? JsonPrimitive)?.contentOrNull
+    fun bool(key: String): Boolean {
+      val primitive = obj[key] as? JsonPrimitive ?: return false
+      // 服务端 isDynamicCode 发整数 1（不是 "true"），booleanOrNull 只认 true/false
+      return primitive.booleanOrNull ?: (primitive.contentOrNull == "1")
+    }
+    val orderView = obj["orderView"] as? JsonObject
+    return CgyyEntryCodeView(
+        qrCode = text("qrCode")?.takeIf { it.isNotBlank() && it != "null" },
+        isDynamicCode = bool("isDynamicCode"),
+        dueDate = text("dueDate"),
+        currDate = text("currDate"),
+        orderView =
+            if (orderView != null) {
+              CgyyEntryOrderView(
+                  campusName = (orderView["campusName"] as? JsonPrimitive)?.contentOrNull,
+                  venueName = (orderView["venueName"] as? JsonPrimitive)?.contentOrNull,
+                  siteName = (orderView["siteName"] as? JsonPrimitive)?.contentOrNull,
+                  reservationDate = (orderView["reservationDate"] as? JsonPrimitive)?.contentOrNull,
+                  reservationDateDetail =
+                      (orderView["reservationDateDetail"] as? JsonPrimitive)?.contentOrNull,
+                  orderName = (orderView["orderName"] as? JsonPrimitive)?.contentOrNull,
+              )
+            } else {
+              null
+            },
     )
   }
 
@@ -1036,6 +1077,18 @@ private class LocalCgyyClient(
               ),
       )
 
+  /** 入场验票「预约码」视图（venue-server /api/vip/code/view，动态码到期需重拉）。网页参数同款：qrRgb=RGB逗号元组。 */
+  suspend fun getVenueEntryCode(): JsonObject? =
+      requestJson(
+              operation = "get_venue_entry_code",
+              method = HttpMethod.Get,
+              path = "/api/vip/code/view",
+              params =
+                  mapOf("isNeedReservation" to 1, "isNeedVipCard" to 1, "qrRgb" to "10,45,103"),
+          )
+          .data
+          ?.jsonObject
+
   suspend fun getMineOrders(page: Int, size: Int): JsonObject =
       requestJson(
               operation = "list_orders",
@@ -1127,6 +1180,10 @@ private class LocalCgyyClient(
       println(
           "UBAA_GRAB submit http status=${response.status} len=${body.length} head=${body.take(300)}"
       )
+    }
+    if (operation == "get_venue_entry_code") {
+      // 诊断：预约码响应（无论成败）都打印 HTTP 状态与完整响应体
+      println("UBAA_GRAB entrycode http status=${response.status} len=${body.length} body=$body")
     }
     if (isLoginRedirect(response, body)) {
       accessToken = null

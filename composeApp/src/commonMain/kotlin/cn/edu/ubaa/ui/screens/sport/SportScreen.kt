@@ -55,6 +55,8 @@ import cn.edu.ubaa.model.dto.CgyyTimeSlotDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.screens.cgyy.CgyyEntryCodeScreen
+import cn.edu.ubaa.ui.screens.cgyy.CgyyEntryCodeViewModel
 import cn.edu.ubaa.ui.screens.cgyy.CgyySportCaptchaPoint
 import cn.edu.ubaa.ui.screens.cgyy.CgyyViewModel
 
@@ -71,6 +73,7 @@ fun SportScreen(
   var showTimePicker by remember { mutableStateOf(false) }
   var showCompanionPicker by remember { mutableStateOf(false) }
   var showGrab by remember { mutableStateOf(false) }
+  var showEntryCode by remember { mutableStateOf(false) }
   val grabViewModel: SportGrabViewModel = viewModel(key = "sport-grab") { SportGrabViewModel() }
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -80,6 +83,13 @@ fun SportScreen(
           viewModel = grabViewModel,
           currentSite = uiState.sites.firstOrNull { it.id == uiState.selectedSiteId },
           onExit = { showGrab = false },
+      )
+    } else if (showEntryCode) {
+      // 入场验票「预约码」：独立全屏页（网页同款 /venue/mobile/membership-code），点开才请求
+      val entryCodeViewModel = remember { CgyyEntryCodeViewModel() }
+      CgyyEntryCodeScreen(
+          viewModel = entryCodeViewModel,
+          onExit = { showEntryCode = false },
       )
     } else {
       Column(modifier = Modifier.fillMaxSize()) {
@@ -189,6 +199,14 @@ fun SportScreen(
                   viewModel.submitReservation(clientX = clientX, clientY = clientY)
                 },
             )
+
+            // 入场验票「预约码」：放底部，避免与顶部抢场入口挤占空间
+            TextButton(
+                onClick = { showEntryCode = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
+            ) {
+              Text("🎫 预约码（入场验票）")
+            }
           }
         }
       }

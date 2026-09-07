@@ -226,6 +226,30 @@ data class CgyyOrderPayResult(
     get() = schoolPayUrl?.takeIf { it.isNotBlank() } ?: payUrl?.takeIf { it.isNotBlank() }
 }
 
+/** 入场验票「预约码」视图（venue-server /api/vip/code/view）。动态码每 ~10s 到期，到期需重新拉取。 */
+data class CgyyEntryCodeView(
+    /** 服务端生成二维码 base64 PNG（无 data: 前缀，渲染时拼接 data:image/png;base64,）。 */
+    val qrCode: String? = null,
+    /** true = 动态码，需按 [dueDate] 倒计时到期重拉（网页约 10s 刷新一次）。 */
+    val isDynamicCode: Boolean = false,
+    /** 当前码失效时间（yyyy-MM-dd HH:mm:ss），到期即重新请求。 */
+    val dueDate: String? = null,
+    /** 服务端当前日期（yyyy-MM-dd）。 */
+    val currDate: String? = null,
+    /** 关联的预约订单信息（场馆/日期/时段）。 */
+    val orderView: CgyyEntryOrderView? = null,
+)
+
+/** [CgyyEntryCodeView.orderView]：预约码关联的订单概要。 */
+data class CgyyEntryOrderView(
+    val campusName: String? = null,
+    val venueName: String? = null,
+    val siteName: String? = null,
+    val reservationDate: String? = null,
+    val reservationDateDetail: String? = null,
+    val orderName: String? = null,
+)
+
 enum class CgyyOrderDisplayColor {
   SUCCESS,
   ERROR,

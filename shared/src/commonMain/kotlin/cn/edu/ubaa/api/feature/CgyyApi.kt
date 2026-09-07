@@ -5,6 +5,7 @@ import cn.edu.ubaa.model.dto.CgyyBuddyListResponse
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
+import cn.edu.ubaa.model.dto.CgyyEntryCodeView
 import cn.edu.ubaa.model.dto.CgyyLockCodeResponse
 import cn.edu.ubaa.model.dto.CgyyOrderDto
 import cn.edu.ubaa.model.dto.CgyyOrderPayResult
@@ -78,6 +79,12 @@ interface CgyyApiBackend {
   suspend fun cancelSportOrder(tradeNo: String): Result<CgyyReservationSubmitResponse> =
       Result.failure(
           UnsupportedOperationException("sport order cancel is not supported by this backend")
+      )
+
+  /** 运动场入场验票「预约码」视图（venue-server /api/vip/code/view，动态码到期需重拉）。默认不支持，由直连后端实现。 */
+  suspend fun getVenueEntryCode(): Result<CgyyEntryCodeView> =
+      Result.failure(
+          UnsupportedOperationException("venue entry code is not supported by this backend")
       )
 }
 
@@ -157,6 +164,10 @@ open class CgyyApi(
 
   open suspend fun cancelSportOrder(tradeNo: String): Result<CgyyReservationSubmitResponse> {
     return currentBackend().cancelSportOrder(tradeNo)
+  }
+
+  open suspend fun getVenueEntryCode(): Result<CgyyEntryCodeView> {
+    return currentBackend().getVenueEntryCode()
   }
 }
 
