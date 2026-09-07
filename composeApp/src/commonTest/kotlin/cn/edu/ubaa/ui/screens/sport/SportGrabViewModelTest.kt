@@ -165,6 +165,28 @@ class SportGrabViewModelTest {
   }
 
   @Test
+  fun `reservation order json is a json array not a bare object`() {
+    // 回归：此前抢场发裸对象 {"spaceId":..,"timeId":..}（漏 []），服务端解析不到时段 →
+    // 静默 data:null / "参数异常，没有获取到预约时间"。必须与手动下单一致为 JSON 数组。
+    assertEquals(
+        """[{"spaceId":"127","timeId":"8719"}]""",
+        SportGrabViewModel.buildReservationOrderJson(
+            spaceId = 127,
+            timeId = 8719,
+            venueSpaceGroupId = null,
+        ),
+    )
+    assertEquals(
+        """[{"spaceId":"127","timeId":"8719","venueSpaceGroupId":"77"}]""",
+        SportGrabViewModel.buildReservationOrderJson(
+            spaceId = 127,
+            timeId = 8719,
+            venueSpaceGroupId = 77,
+        ),
+    )
+  }
+
+  @Test
   fun `classifySubmitFailure detects captcha and rate-limit messages`() {
     assertEquals(SubmitFailureKind.CAPTCHA_ERROR, SportGrabViewModel.classifySubmitFailure("验证码错误"))
     assertEquals(

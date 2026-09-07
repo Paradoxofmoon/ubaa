@@ -47,6 +47,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -277,19 +278,34 @@ internal class LocalCgyyApiBackend(
   ): Result<CgyySportOrderSubmitResponse> =
       execute("${venueLabel}预约提交失败，请稍后重试") { _, client ->
         val envelope = client.submitSportOrder(request)
-        val data = envelope.data?.jsonObject
+        // 服务端静默拒绝（反机器人/参数校验失败）时返回 code==200 但 data==null（JsonNull），需容错
+        val data = if (envelope.data is JsonNull) null else envelope.data?.jsonObject
         // venue-server 业务失败走非 200，由 requestJson 抛异常；此处 code==200。
         // 成功 = data 含 id/tradeNo（实抓结构），或同验证码协议的 data.repCode=="0000"；
-        // 若 code==200 但业务失败（data.success=false / repCode!=0000 / 无订单字段），如实上报失败。
+        // 若 code==200 但业务失败（data.success=false / repCode!=0000 / 无订单字段 / data==null），如实上报失败。
         val repCode = data?.get("repCode")?.jsonPrimitive?.contentOrNull
         val innerMsg = data?.get("repMsg")?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val hasOrder = data?.get("id") != null || data?.get("tradeNo") != null
-        CgyySportOrderSubmitResponse(
-            success = hasOrder || repCode == "0000",
-            message = innerMsg ?: envelope.message.takeIf { it.isNotBlank() },
-            orderId = data?.get("id")?.jsonPrimitive?.contentOrNull?.toLongOrNull(),
-            tradeNo = data?.get("tradeNo")?.jsonPrimitive?.contentOrNull,
-        )
+        val response =
+            CgyySportOrderSubmitResponse(
+                success = hasOrder || repCode == "0000",
+                message =
+                    innerMsg
+                        ?: if (data == null) {
+                          "预约被系统拒绝（未返回订单信息）"
+                        } else {
+                          envelope.message.takeIf { it.isNotBlank() }
+                        },
+                orderId = data?.get("id")?.jsonPrimitive?.contentOrNull?.toLongOrNull(),
+                tradeNo = data?.get("tradeNo")?.jsonPrimitive?.contentOrNull,
+            )
+        if (!response.success) {
+          // 诊断：code==200 但业务失败（如"该时段已被预约"藏在 repMsg）时打印原始响应
+          println(
+              "UBAA_GRAB submit business-fail repCode=$repCode innerMsg=$innerMsg envelopeMsg=${envelope.message} raw=${envelope.raw}"
+          )
+        }
+        response
       }
 
   override suspend fun getBuddies(page: Int, size: Int): Result<CgyyBuddyListResponse> =
@@ -346,6 +362,12 @@ internal class LocalCgyyApiBackend(
     return try {
       Result.success(block(username, currentClient(username)))
     } catch (error: Exception) {
+      if (defaultMessage.contains("预约提交")) {
+        // 诊断：下单失败异常类型（网络/IO/非JSON 等），说明为何兜底文案
+        println(
+            "UBAA_GRAB submit exception ${error::class.simpleName}: " + error.message?.take(200)
+        )
+      }
       Result.failure(mapFailure(error, defaultMessage))
     }
   }
@@ -1100,6 +1122,12 @@ private class LocalCgyyClient(
         }
 
     val body = response.bodyAsText()
+    if (operation == "submit_sport_order") {
+      // 诊断：运动场下单响应（无论成败）都打印 HTTP 状态与响应体头部
+      println(
+          "UBAA_GRAB submit http status=${response.status} len=${body.length} head=${body.take(300)}"
+      )
+    }
     if (isLoginRedirect(response, body)) {
       accessToken = null
       if (!allowRetry) {
@@ -1133,6 +1161,10 @@ private class LocalCgyyClient(
             }
     val code = raw["code"]?.jsonPrimitive?.intOrNull
     if (code != 200) {
+      if (operation == "submit_sport_order") {
+        // 诊断：运动场下单失败时打印完整原始响应（含 data.repCode/repMsg 真实业务原因）
+        println("UBAA_GRAB non200 op=$operation path=$pathOnly code=$code raw=$raw")
+      }
       throw LocalCgyyApiException(
           raw["message"]?.jsonPrimitive?.contentOrNull ?: "${venueLabel}系统请求失败",
           "cgyy_error",

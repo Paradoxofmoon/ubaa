@@ -40,6 +40,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,6 +51,7 @@ import cn.edu.ubaa.model.dto.CgyyBuddyDto
 import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
+import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 
 /** 抢场界面：草稿列表 / 预选编辑器 / 抢场监控 三态。 */
 @Composable
@@ -96,6 +100,35 @@ fun SportGrabScreen(
           onRefresh = viewModel::refreshCaptcha,
           onDismiss = viewModel::dismissCaptcha,
       )
+    }
+
+    // 抢到订单后的支付：cc-pay 收银台 → 隐藏 WebView 自动唤起微信/支付宝（复用校车/电费同款机制）
+    // ccpayReady：等 cc-pay 会话后台预热完成 + 用户选定渠道后才渲染，避免收银台页无会话。
+    val payCashierUrl = uiState.payCashierUrl
+    if (payCashierUrl != null && !uiState.payChannelPending && uiState.ccpayReady) {
+      SchemeTriggerWebView(
+          cashierUrl = payCashierUrl,
+          channel = uiState.payChannel,
+          onConsumed = viewModel::clearVenuePay,
+      )
+    }
+    if (uiState.payChannelPending && payCashierUrl != null) {
+      SportPayChannelDialog(
+          onChooseWx = { viewModel.chooseVenuePayChannel("wx") },
+          onChooseAli = { viewModel.chooseVenuePayChannel("ali") },
+          onDismiss = viewModel::clearVenuePay,
+      )
+    }
+    // 无 cc-pay 收银台时才退回航财通·校园付扫码
+    if (payCashierUrl == null) {
+      uiState.payResult?.let { pay ->
+        SportPayDialog(
+            pay = pay,
+            payError = uiState.payError,
+            isPaying = uiState.isPaying,
+            onDismiss = viewModel::dismissPayResult,
+        )
+      }
     }
   }
 }
@@ -150,6 +183,8 @@ private fun DraftListContent(
 
 @Composable
 private fun DraftCard(draft: PriorityDraft, viewModel: SportGrabViewModel) {
+  // 记录「开始抢场」按钮位置：下单 orderPin 需要真实点击坐标（服务端反机器人校验，假坐标会静默拒绝 data:null）
+  var startButtonPosition by remember { mutableStateOf<LayoutCoordinates?>(null) }
   Card(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
   ) {
@@ -186,8 +221,22 @@ private fun DraftCard(draft: PriorityDraft, viewModel: SportGrabViewModel) {
           )
         }
         TextButton(onClick = { viewModel.editDraft(draft.id) }) { Text("编辑") }
-        // 开始抢场：pin 坐标由 VM 兜底为合理值（服务器仅校验坐标格式，无法校验原生按钮位置）
-        Button(onClick = { viewModel.startGrab(draft, 0, 0) }) { Text("开始抢场") }
+        // 开始抢场：与手动下单一致，用按钮真实中心坐标生成 orderPin，否则服务端静默拒绝（data:null）
+        Button(
+            onClick = {
+              val coords = startButtonPosition
+              val clientX =
+                  if (coords != null) (coords.positionInRoot().x + coords.size.width / 2f).toInt()
+                  else 0
+              val clientY =
+                  if (coords != null) (coords.positionInRoot().y + coords.size.height / 2f).toInt()
+                  else 0
+              viewModel.startGrab(draft, clientX, clientY)
+            },
+            modifier = Modifier.onGloballyPositioned { startButtonPosition = it },
+        ) {
+          Text("开始抢场")
+        }
       }
     }
   }
@@ -466,8 +515,30 @@ private fun GrabMonitorContent(uiState: SportGrabUiState, viewModel: SportGrabVi
               color = MaterialTheme.colorScheme.primary,
           )
           Text("订单号 $it", style = MaterialTheme.typography.bodyMedium)
+          if (uiState.isPaying) {
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              CircularProgressIndicator(
+                  modifier = Modifier.width(16.dp).height(16.dp),
+                  strokeWidth = 2.dp,
+              )
+              Spacer(Modifier.width(6.dp))
+              Text("正在发起支付…", style = MaterialTheme.typography.bodySmall)
+            }
+          }
+          uiState.payError?.let {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+          }
           Spacer(Modifier.height(8.dp))
-          Button(onClick = viewModel::exitGrab) { Text("完成") }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = viewModel::retryPay) { Text("去支付") }
+            OutlinedButton(onClick = viewModel::exitGrab) { Text("完成") }
+          }
         }
       }
     }

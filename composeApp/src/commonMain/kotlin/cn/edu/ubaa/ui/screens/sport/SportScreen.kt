@@ -821,7 +821,7 @@ private fun SportAddBuddyDialog(
 }
 
 @Composable
-private fun SportPayDialog(
+internal fun SportPayDialog(
     pay: CgyyOrderPayResult,
     payError: String?,
     isPaying: Boolean,
@@ -891,7 +891,7 @@ private fun SportPayDialog(
 }
 
 @Composable
-private fun SportPayChannelDialog(
+internal fun SportPayChannelDialog(
     onChooseWx: () -> Unit,
     onChooseAli: () -> Unit,
     onDismiss: () -> Unit,

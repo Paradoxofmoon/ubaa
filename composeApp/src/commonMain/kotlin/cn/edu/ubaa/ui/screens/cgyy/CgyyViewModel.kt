@@ -30,8 +30,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
@@ -921,7 +919,9 @@ class CgyyViewModel(
         CgyySportOrderSubmitRequest(
             venueSiteId = siteId,
             reservationDate = current.selectedDate,
-            weekStartDate = venueMondayOfWeek(current.selectedDate),
+            // 服务端约定 weekStartDate = reservationDate（网页与研讨室流程一致）；
+            // 此前误用"日历周一"，非周一日期会导致"参数异常，没有获取到预约时间"
+            weekStartDate = current.selectedDate,
             reservationOrderJson = reservationOrderJson,
             orderPrice = orderPrice,
             orderPin = orderPin,
@@ -930,6 +930,13 @@ class CgyyViewModel(
             captchaVerification = check.captchaVerification,
             captchaToken = check.captchaToken,
         )
+    // 诊断：打印手动下单完整请求，便于与抢场对比定位差异
+    println(
+        "UBAA_MANUAL submit req site=${request.venueSiteId} date=${request.reservationDate} " +
+            "week=${request.weekStartDate} json=${request.reservationOrderJson} " +
+            "price=${request.orderPrice} pin=$orderPin phone=${request.phone} " +
+            "buddyIds=${request.buddyIds}"
+    )
     _uiState.value = _uiState.value.copy(isSubmitting = true, actionMessage = null)
     viewModelScope.launch {
       cgyyApi
@@ -1024,14 +1031,6 @@ class CgyyViewModel(
     )
   }
 }
-
-/** 运动场下单 weekStartDate = 该日期所在周的周一（yyyy-MM-dd）。 */
-private fun venueMondayOfWeek(date: String): String =
-    runCatching {
-          val d = LocalDate.parse(date)
-          d.minus(d.dayOfWeek.ordinal - 1, DateTimeUnit.DAY).toString()
-        }
-        .getOrDefault(date)
 
 /** 仅保留支持预约的场馆（isSupportReservation 为 null 或 true；丢弃明确 false 的）。 */
 private fun List<CgyyVenueSiteDto>.filterReservable(): List<CgyyVenueSiteDto> = filter {

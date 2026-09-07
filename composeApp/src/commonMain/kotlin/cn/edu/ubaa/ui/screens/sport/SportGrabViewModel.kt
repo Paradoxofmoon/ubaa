@@ -8,6 +8,7 @@ import cn.edu.ubaa.api.local.decodeCgyyCaptchaImage
 import cn.edu.ubaa.api.local.encryptCgyyClickWordCaptchaVerification
 import cn.edu.ubaa.api.local.encryptCgyyClickWordPointJson
 import cn.edu.ubaa.api.local.encryptCgyyOrderPin
+import cn.edu.ubaa.api.local.ensureCcpaySession
 import cn.edu.ubaa.api.local.sportVenueDirectApi
 import cn.edu.ubaa.api.storage.CgyyReservationFormStore
 import cn.edu.ubaa.api.storage.PreSelectionStore
@@ -17,6 +18,7 @@ import cn.edu.ubaa.model.dto.CgyyBuddyDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCaptchaDto
 import cn.edu.ubaa.model.dto.CgyyClickWordCheckResult
 import cn.edu.ubaa.model.dto.CgyyDayInfoResponse
+import cn.edu.ubaa.model.dto.CgyyOrderPayResult
 import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.screens.cgyy.CgyySportCaptchaPoint
@@ -94,6 +96,14 @@ data class SportGrabUiState(
     /** 「开始抢场」按钮点击坐标（orderPin 数据源，自动提交复用）。 */
     val pinClientX: Int = 0,
     val pinClientY: Int = 0,
+    // ---- 抢到订单后的支付（复用 cc-pay 收银台机制） ----
+    val payCashierUrl: String? = null,
+    val payChannel: String = "wx",
+    val payChannelPending: Boolean = false,
+    val ccpayReady: Boolean = false,
+    val payResult: CgyyOrderPayResult? = null,
+    val isPaying: Boolean = false,
+    val payError: String? = null,
 )
 
 /** 抢场提交失败分类：决定降级/重试/停止。 */
@@ -515,6 +525,12 @@ class SportGrabViewModel(
                   },
           )
         }
+        // 诊断：打印锁定意向的时段与解析出的 timeId，便于核对是否与手动下单一致
+        println(
+            "UBAA_GRAB lock idx=${candidate.index} label=${candidate.displayLabel} " +
+                "space=${candidate.spaceId} timeId=${candidate.resolvedTimeId} " +
+                "price=slotFee group=${candidate.venueSpaceGroupId}"
+        )
         fetchCaptcha()
       } else if (statuses.all { it.isTaken || it.isUnavailable || it.failCount >= 2 }) {
         _uiState.update { it.copy(message = "所有意向均不可用或已被抢，已停止", grabActive = false) }
@@ -685,12 +701,10 @@ class SportGrabViewModel(
             ?.slots
             ?.firstOrNull { it.timeId == timeId }
     val orderFee = slot?.orderFee ?: 0.0
-    // 与手动下单一致：venueSpaceGroupId 缺失会触发服务端"参数异常，未获取到预约时间"
-    val reservationOrderJson = buildString {
-      append("{\"spaceId\":\"${active.spaceId}\",\"timeId\":\"$timeId\"")
-      active.venueSpaceGroupId?.let { append(",\"venueSpaceGroupId\":\"$it\"") }
-      append("}")
-    }
+    // 服务端要求 reservationOrderJson 是 JSON 数组（与手动下单一致，[] 包裹）。
+    // 此前漏了数组括号只发裸对象，服务端解析不到时段 → 静默 data:null / 参数异常。
+    val reservationOrderJson =
+        buildReservationOrderJson(active.spaceId, timeId, active.venueSpaceGroupId)
     val orderPin =
         runCatching {
               encryptCgyyOrderPin(
@@ -706,7 +720,9 @@ class SportGrabViewModel(
         CgyySportOrderSubmitRequest(
             venueSiteId = draft.venueSiteId,
             reservationDate = draft.date,
-            weekStartDate = venueMondayOfWeek(draft.date),
+            // 服务端约定 weekStartDate = reservationDate（网页与研讨室流程一致）；
+            // 此前误用"日历周一"，非周一日期会导致"参数异常，没有获取到预约时间"
+            weekStartDate = draft.date,
             reservationOrderJson = reservationOrderJson,
             orderPrice = orderFee,
             orderPin = orderPin,
@@ -715,6 +731,13 @@ class SportGrabViewModel(
             captchaVerification = check.captchaVerification,
             captchaToken = check.captchaToken,
         )
+    // 诊断：打印抢场下单完整请求，便于对比手动下单定位服务端拒绝原因
+    println(
+        "UBAA_GRAB submit req site=${request.venueSiteId} date=${request.reservationDate} " +
+            "week=${request.weekStartDate} json=${request.reservationOrderJson} " +
+            "price=${request.orderPrice} pin=$orderPin phone=${request.phone} " +
+            "buddyIds=${request.buddyIds}"
+    )
     _uiState.update {
       it.copy(isSubmitting = true, message = "正在提交意向${active.index + 1}（${active.displayLabel}）…")
     }
@@ -733,12 +756,83 @@ class SportGrabViewModel(
                     message = "抢场成功！订单号 ${result.tradeNo ?: "-"}",
                 )
               }
+              // 抢到订单立即自动发起支付（cc-pay 收银台 → 渠道选择），避免留下未支付订单
+              result.tradeNo?.let { paySuccessOrder(it) }
             } else {
               handleSubmitFailure(result.message ?: "预约失败")
             }
           }
           .onFailure { e -> handleSubmitFailure(e.message ?: "预约失败") }
     }
+  }
+
+  /** 抢到订单后自动发起支付：优先 cc-pay 收银台（弹渠道选择 + 隐藏 WebView 自动唤起微信/支付宝）； 无收银台退回航财通·校园付扫码。与手动下单支付逻辑一致。 */
+  private fun paySuccessOrder(tradeNo: String) {
+    viewModelScope.launch {
+      _uiState.update { it.copy(isPaying = true, payError = null) }
+      cgyyApi
+          .paySportOrder(tradeNo)
+          .onSuccess { pay ->
+            _uiState.update { it.copy(isPaying = false) }
+            val cashierUrl = pay.schoolPayUrl?.takeIf { "cashier.cc-pay.cn" in it }
+            if (!cashierUrl.isNullOrBlank()) {
+              // cc-pay 收银台 → 立即弹渠道选择，cc-pay 会话后台预热，不阻塞用户决策
+              _uiState.update {
+                it.copy(payCashierUrl = cashierUrl, payChannelPending = true, payResult = null)
+              }
+              viewModelScope.launch {
+                // 无论成功失败都标记就绪（失败时页面可能仍可工作或提示重试）
+                runCatching { ensureCcpaySession() }
+                _uiState.update { it.copy(ccpayReady = true) }
+              }
+            } else if (!pay.payCode.isNullOrBlank()) {
+              // 无收银台 → 退回航财通·校园付扫码
+              _uiState.update { it.copy(payResult = pay) }
+            } else {
+              _uiState.update { it.copy(message = "支付信息为空，请稍后在订单列表支付（订单号 $tradeNo）") }
+            }
+          }
+          .onFailure {
+            _uiState.update { it.copy(isPaying = false, payError = it.message ?: "支付发起失败") }
+          }
+    }
+  }
+
+  /** 用户选定支付渠道（wx / ali）后拉起 cc-pay 收银台。 */
+  fun chooseVenuePayChannel(channel: String) {
+    val s = _uiState.value
+    if (s.payCashierUrl.isNullOrBlank()) return
+    _uiState.update {
+      it.copy(
+          payChannel = if (channel == "ali") "ali" else "wx",
+          payChannelPending = false,
+      )
+    }
+  }
+
+  /** 用户取消/收银台流程结束：清理支付状态。 */
+  fun clearVenuePay() {
+    _uiState.update {
+      it.copy(
+          payCashierUrl = null,
+          payChannel = "wx",
+          payChannelPending = false,
+          ccpayReady = false,
+          payResult = null,
+      )
+    }
+  }
+
+  /** 关闭航财通扫码支付弹窗。 */
+  fun dismissPayResult() {
+    _uiState.update { it.copy(payResult = null, payError = null) }
+  }
+
+  /** 手动重试支付（成功卡片「去支付」按钮）。 */
+  fun retryPay() {
+    val tradeNo = _uiState.value.result?.takeIf { it != "成功" } ?: return
+    _uiState.update { it.copy(payError = null, payResult = null, payCashierUrl = null) }
+    paySuccessOrder(tradeNo)
   }
 
   /**
@@ -845,14 +939,6 @@ class SportGrabViewModel(
       runCatching { LocalDate.parse(date).plus(days, DateTimeUnit.DAY).toString() }
           .getOrDefault(date)
 
-  /** 目标日所在周周一（下单 weekStartDate）。 */
-  private fun venueMondayOfWeek(date: String): String =
-      runCatching {
-            val d = LocalDate.parse(date)
-            d.minus(d.dayOfWeek.ordinal - 1, DateTimeUnit.DAY).toString()
-          }
-          .getOrDefault(date)
-
   private fun randomDelay(minMs: Long, maxMs: Long): Long =
       minMs + (Math.random() * (maxMs - minMs)).toLong()
 
@@ -866,6 +952,22 @@ class SportGrabViewModel(
     const val DISMISS_COOLDOWN_MS = 20_000L
     /** 抢场随单提交的同伴上限（含本人共 3 人，与场馆预约页一致）。 */
     const val MAX_GRAB_BUDDIES = 2
+
+    /**
+     * 构造下单 reservationOrderJson。
+     *
+     * 服务端要求 JSON **数组**（与手动下单 / 网页一致）：`[{"spaceId":...,"timeId":...}]`。 回归：此前漏了数组括号只发裸对象，服务端解析不到时段
+     * → 静默 `data:null` 或"参数异常，没有获取到预约时间"。
+     */
+    internal fun buildReservationOrderJson(
+        spaceId: Int,
+        timeId: Int,
+        venueSpaceGroupId: Int?,
+    ): String = buildString {
+      append("[{\"spaceId\":\"$spaceId\",\"timeId\":\"$timeId\"")
+      venueSpaceGroupId?.let { append(",\"venueSpaceGroupId\":\"$it\"") }
+      append("}]")
+    }
 
     /**
      * 重建意向状态（dayInfo 刷新后）。
