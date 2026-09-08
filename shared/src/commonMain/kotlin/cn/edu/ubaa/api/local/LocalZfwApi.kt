@@ -189,10 +189,12 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
    * 表格列结构（data-col-seq）： 1=产品名称, 2=计费策略, 3=已用流量, 4=已用时长, 6=免费流量剩余(不含套餐), 7=计费流量剩余(不含套餐), 12=结算日期
    */
   private fun extractTrafficData(html: String): TrafficData {
-    val tableMatch = PRODUCT_TABLE_REGEX.find(html)
-    if (tableMatch == null) {
-      throw ApiCallException("未找到流量数据表格，页面结构可能已变更")
-    }
+    // 边界安全：先逐表匹配每个 kv-grid-table（不跨 </table>），再取包含"免费流量剩余"表头的产品信息表。
+    // 门户首页在线设备表排在产品信息表前面，若用跨表正则 [\s\S]*? 会从设备表吃到产品表，
+    // 导致 PRODUCT_ROW_REGEX 抓到设备行（IP/MAC/下线按钮）而非产品数据行。
+    val tableMatch =
+        PRODUCT_TABLE_REGEX.findAll(html).firstOrNull { it.value.contains("免费流量剩余") }
+            ?: throw ApiCallException("未找到流量数据表格，页面结构可能已变更")
     val tableHtml = tableMatch.value
 
     // 提取"套餐详情"展开行的 tbody（data-key 行是实际数据行）
@@ -680,10 +682,10 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
         )
 
     // 流量解析相关正则
-    /** 匹配"产品信息"表格——即包含"免费流量剩余"表头的那个 table。 首页有多个 kv-grid-table（在线信息表、产品信息表），必须精确定位产品信息表。 */
+    /** 匹配单个"产品信息"候选表格——每个 kv-grid-table 独立成段（不跨 </table>）。 */
     private val PRODUCT_TABLE_REGEX =
         Regex(
-            """<table[^>]*class=["'][^"']*kv-grid-table[^"']*["'][^>]*>[\s\S]*?免费流量剩余[\s\S]*?</table>""",
+            """<table[^>]*class=["'][^"']*kv-grid-table[^"']*["'][^>]*>[\s\S]*?</table>""",
             RegexOption.IGNORE_CASE,
         )
     /** 匹配表格中带 data-key 的实际数据行。 */
