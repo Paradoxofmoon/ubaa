@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MeetingRoom
@@ -31,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.TodayClass
+import cn.edu.ubaa.ui.common.util.formatMoney
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
@@ -65,6 +68,11 @@ internal fun HomeScreen(
     onRefresh: () -> Unit,
     onTodoClick: (HomeTodoItem) -> Unit,
     onSigninTodoClick: (String) -> Unit,
+    balanceAlertVisible: Boolean,
+    balanceAlertBalanceYuan: Double?,
+    balanceAlertThresholdYuan: Double?,
+    onBalanceAlertGoCard: () -> Unit,
+    onBalanceAlertDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -80,6 +88,18 @@ internal fun HomeScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+      // 余额不足提醒横幅（首页顶部）
+      if (balanceAlertVisible) {
+        item {
+          BalanceAlertBanner(
+              balanceYuan = balanceAlertBalanceYuan,
+              thresholdYuan = balanceAlertThresholdYuan,
+              onGoCard = onBalanceAlertGoCard,
+              onDismiss = onBalanceAlertDismiss,
+          )
+        }
+      }
+
       item {
         Column(modifier = Modifier.padding(top = 16.dp)) {
           Row(
@@ -509,3 +529,48 @@ private fun sourceIcon(source: HomeTodoSource): ImageVector =
       HomeTodoSource.SIGNIN -> Icons.Default.CheckCircle
       HomeTodoSource.YGDK -> Icons.AutoMirrored.Filled.DirectionsRun
     }
+
+/** 首页顶部余额不足提醒横幅：低于阈值时显示，可点击跳转充值，可手动关闭（当天不再显示）。 */
+@Composable
+private fun BalanceAlertBanner(
+    balanceYuan: Double?,
+    thresholdYuan: Double?,
+    onGoCard: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+  Card(
+      modifier = Modifier.fillMaxWidth(),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+  ) {
+    Row(
+        modifier =
+            Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+            "校园卡余额不足提醒",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            "当前余额 ¥${formatMoney(balanceYuan ?: 0.0)}，低于阈值 ¥${formatMoney(thresholdYuan ?: 0.0)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+        )
+      }
+      TextButton(onClick = onGoCard) {
+        Text("去充值", color = MaterialTheme.colorScheme.onErrorContainer)
+      }
+      IconButton(onClick = onDismiss) {
+        Icon(
+            Icons.Default.Close,
+            contentDescription = "关闭提醒",
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+        )
+      }
+    }
+  }
+}

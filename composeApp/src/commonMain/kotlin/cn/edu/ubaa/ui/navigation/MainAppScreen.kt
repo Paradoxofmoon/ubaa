@@ -31,6 +31,8 @@ import cn.edu.ubaa.ui.common.components.BottomNavTab
 import cn.edu.ubaa.ui.common.components.BottomNavigation
 import cn.edu.ubaa.ui.common.components.Sidebar
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
+import cn.edu.ubaa.ui.screens.balance.BalanceAlertUiState
+import cn.edu.ubaa.ui.screens.balance.BalanceAlertViewModel
 import cn.edu.ubaa.ui.screens.bus.BusScreen
 import cn.edu.ubaa.ui.screens.bus.BusViewModel
 import cn.edu.ubaa.ui.screens.bykc.*
@@ -238,6 +240,15 @@ fun MainAppScreen(
         null
       }
   val networkUiState = networkViewModel?.state?.collectAsState()?.value ?: NetworkUiState()
+
+  val balanceAlertViewModel: BalanceAlertViewModel? =
+      if (currentScreen == AppScreen.HOME) {
+        viewModel(key = "balance-alert") { BalanceAlertViewModel() }
+      } else {
+        null
+      }
+  val balanceAlertUiState =
+      balanceAlertViewModel?.state?.collectAsState()?.value ?: BalanceAlertUiState()
 
   val zfwViewModel: ZfwViewModel? =
       if (currentScreen == AppScreen.ZFW) {
@@ -659,7 +670,10 @@ fun MainAppScreen(
     zfwViewModel?.reset()
     // 刷新当前页面数据
     when (currentScreen) {
-      AppScreen.HOME -> startHomeBootstrap(forceRefresh = true)
+      AppScreen.HOME -> {
+        startHomeBootstrap(forceRefresh = true)
+        balanceAlertViewModel?.checkOnHomeEntered()
+      }
       AppScreen.SCHEDULE -> scheduleViewModel.ensureScheduleLoaded(forceRefresh = true)
       AppScreen.EXAM -> examViewModel?.ensureLoaded(forceRefresh = true)
       AppScreen.GRADE -> gradeViewModel?.ensureLoaded(forceRefresh = true)
@@ -720,7 +734,10 @@ fun MainAppScreen(
       homeBootstrapCoordinator.cancel()
     }
     when (currentScreen) {
-      AppScreen.HOME -> startHomeBootstrap()
+      AppScreen.HOME -> {
+        startHomeBootstrap()
+        balanceAlertViewModel?.checkOnHomeEntered()
+      }
       AppScreen.SCHEDULE -> scheduleViewModel.ensureScheduleLoaded()
       AppScreen.EXAM -> examViewModel?.ensureLoaded()
       AppScreen.GRADE -> gradeViewModel?.ensureLoaded()
@@ -914,6 +931,11 @@ fun MainAppScreen(
                   onRefresh = { refreshHomeData() },
                   onTodoClick = { todoItem -> handleHomeTodoClick(todoItem) },
                   onSigninTodoClick = { courseId -> signinViewModel.performSignin(courseId) },
+                  balanceAlertVisible = balanceAlertUiState.bannerVisible,
+                  balanceAlertBalanceYuan = balanceAlertUiState.bannerBalanceYuan,
+                  balanceAlertThresholdYuan = balanceAlertUiState.thresholdYuan,
+                  onBalanceAlertGoCard = { navigateTo(AppScreen.CARD) },
+                  onBalanceAlertDismiss = { balanceAlertViewModel?.dismissBanner() },
               )
           AppScreen.REGULAR ->
               RegularFeaturesScreen(
@@ -1179,6 +1201,9 @@ fun MainAppScreen(
                     onAmountChange = viewModel::onAmountChange,
                     onBeginRecharge = viewModel::beginRecharge,
                     onClearPendingPay = { viewModel.clearPendingPay() },
+                    onThresholdInputChange = viewModel::onThresholdInputChange,
+                    onSaveThreshold = viewModel::saveBalanceThreshold,
+                    onClearThreshold = viewModel::clearBalanceThreshold,
                 )
               }
           AppScreen.NETWORK ->

@@ -2,12 +2,14 @@ package cn.edu.ubaa.ui.screens.card
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cn.edu.ubaa.api.balance.BalanceAlertStore
 import cn.edu.ubaa.api.feature.CardApi
 import cn.edu.ubaa.api.feature.CardPayWay
 import cn.edu.ubaa.ui.common.util.formatMoney
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** 校园卡界面 UI 状态。 */
@@ -24,6 +26,9 @@ data class CardUiState(
     // 待用的真实收银台地址 + 用户选定的支付渠道(用于注入脚本自动点支付)
     val pendingCashierUrl: String? = null,
     val pendingChannel: String? = null,
+    // ---- 余额提醒阈值 ----
+    val thresholdYuan: Double? = null,
+    val thresholdInput: String = "",
 )
 
 /** 校园卡余额查询 + 充值 ViewModel。 */
@@ -34,6 +39,10 @@ class CardViewModel(
 
   private val _state = MutableStateFlow(CardUiState())
   val state: StateFlow<CardUiState> = _state.asStateFlow()
+
+  init {
+    _state.update { it.copy(thresholdYuan = BalanceAlertStore.getThresholdYuan()) }
+  }
 
   /** 首次加载或按需刷新余额。 */
   fun ensureLoaded(forceRefresh: Boolean = false) {
@@ -168,5 +177,30 @@ class CardViewModel(
   /** 清空错误提示。 */
   fun clearError() {
     _state.value = _state.value.copy(error = null)
+  }
+
+  // ===== 余额提醒阈值 =====
+
+  /** 阈值输入变化：仅允许数字与小数点。 */
+  fun onThresholdInputChange(value: String) {
+    val filtered = value.filter { it.isDigit() || it == '.' }
+    _state.update { it.copy(thresholdInput = filtered, error = null) }
+  }
+
+  /** 保存余额提醒阈值（元，>0）。null 语义由清除按钮承担。 */
+  fun saveBalanceThreshold() {
+    val value = _state.value.thresholdInput.toDoubleOrNull()
+    if (value == null || value <= 0.0) {
+      _state.update { it.copy(error = "阈值需为大于 0 的金额（元）") }
+      return
+    }
+    BalanceAlertStore.setThresholdYuan(value)
+    _state.update { it.copy(thresholdYuan = value, thresholdInput = "", error = null) }
+  }
+
+  /** 清除阈值 = 关闭余额提醒。 */
+  fun clearBalanceThreshold() {
+    BalanceAlertStore.setThresholdYuan(null)
+    _state.update { it.copy(thresholdYuan = null, thresholdInput = "", error = null) }
   }
 }

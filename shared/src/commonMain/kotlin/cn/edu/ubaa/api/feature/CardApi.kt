@@ -38,7 +38,7 @@ interface CardApiBackend {
 }
 
 /** 校园一卡通 API 服务入口。 根据当前连接模式自动选择直连、WebVPN 或中继后端。 */
-class CardApi(
+open class CardApi(
     private val backendProvider: () -> CardApiBackend = { ConnectionRuntime.apiFactory().cardApi() }
 ) {
   internal constructor(backend: CardApiBackend) : this({ backend })
@@ -50,7 +50,7 @@ class CardApi(
    *
    * @return 包含余额与待领取金额的 [Result]。若失败则包含异常信息。
    */
-  suspend fun getBalance(): Result<CardBalanceData> {
+  open suspend fun getBalance(): Result<CardBalanceData> {
     return currentBackend().getBalance()
   }
 

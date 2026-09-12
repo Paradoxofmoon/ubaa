@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.api.feature.CardPayWay
+import cn.edu.ubaa.ui.common.util.formatMoney
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -35,6 +36,9 @@ fun CardScreen(
     onAmountChange: (String) -> Unit,
     onBeginRecharge: (String) -> Unit,
     onClearPendingPay: () -> Unit,
+    onThresholdInputChange: (String) -> Unit,
+    onSaveThreshold: () -> Unit,
+    onClearThreshold: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val cashierUrl = uiState.pendingCashierUrl
@@ -83,6 +87,17 @@ fun CardScreen(
                 title = "卡余额",
                 amount = uiState.balance,
                 icon = Icons.Default.AccountBalanceWallet,
+            )
+          }
+
+          // 余额提醒阈值设置
+          item {
+            BalanceThresholdCard(
+                thresholdYuan = uiState.thresholdYuan,
+                input = uiState.thresholdInput,
+                onInputChange = onThresholdInputChange,
+                onSave = onSaveThreshold,
+                onClear = onClearThreshold,
             )
           }
 
@@ -322,6 +337,63 @@ private fun BalanceCard(
           fontWeight = FontWeight.Bold,
           color = MaterialTheme.colorScheme.onSurface,
       )
+    }
+  }
+}
+
+/** 余额提醒阈值设置卡片：设置/清除阈值（元）。低于阈值时首页横幅提醒（每天一次）。 */
+@Composable
+private fun BalanceThresholdCard(
+    thresholdYuan: Double?,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onClear: () -> Unit,
+) {
+  Card(
+      modifier = Modifier.fillMaxWidth(),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+      elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+      shape = MaterialTheme.shapes.medium,
+  ) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Text(
+          text = "余额提醒",
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface,
+      )
+      Text(
+          text =
+              if (thresholdYuan != null) {
+                "已开启：余额低于 ¥${formatMoney(thresholdYuan)} 时，进入 App 首页自动检测并横幅提醒（每天一次）"
+              } else {
+                "未开启。设置阈值后，登录进入首页会静默检测校园卡余额，低于阈值时横幅提醒。"
+              },
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            modifier = Modifier.weight(1f),
+            label = { Text("阈值（元）") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+        )
+        Button(onClick = onSave, enabled = input.isNotBlank()) { Text("保存") }
+        if (thresholdYuan != null) {
+          TextButton(onClick = onClear) { Text("关闭提醒") }
+        }
+      }
     }
   }
 }
