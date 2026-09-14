@@ -6,6 +6,19 @@
 
 ---
 
+## 下载安装
+
+[![Latest Release](https://img.shields.io/github/v/release/Paradoxofmoon/ubaa?label=最新版本&color=green)](https://github.com/Paradoxofmoon/ubaa/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/Paradoxofmoon/ubaa/total?label=总下载&color=blue)](https://github.com/Paradoxofmoon/ubaa/releases)
+
+- 最新版 APK：**[点此进入最新 Release 下载](https://github.com/Paradoxofmoon/ubaa/releases/latest)**（页面里附件 `UBAA-Android-vX.X.X.apk` 即是）
+- 全部历史版本：[Releases 页面](https://github.com/Paradoxofmoon/ubaa/releases)
+- 安装：下载 `.apk` 后用文件管理器打开安装；Android 首次安装需允许「未知来源」应用
+
+> 每次迭代打包好后会发布到 Releases，直接下载即可，无需自行编译。
+
+---
+
 ## 功能特性
 
 | 功能 | 说明 |

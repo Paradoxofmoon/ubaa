@@ -26,10 +26,18 @@ jobs:
         id: get_version
         run: echo "VERSION=$(grep 'project.version=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
 
-      - name: Decode Keystore
-        run: echo "${{ secrets.SIGNING_KEY }}" | base64 -d > androidApp/release.jks
+      - name: Recreate signing keystore from secret (if configured)
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.SIGNING_KEY }}" ]; then
+            echo "::notice::SIGNING_KEY secret 未配置，跳过签名 Release 构建，仅构建 Debug。"
+            echo "SKIP_RELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "${{ secrets.SIGNING_KEY }}" | base64 -d > androidApp/release.jks
+          fi
 
       - name: Build Android
+        if: env.SKIP_RELEASE != 'true'
         env:
           SIGNING_KEY: release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
@@ -41,6 +49,7 @@ jobs:
           cp androidApp/build/outputs/apk/release/androidApp-release.apk UBAA-Android-v${{ steps.get_version.outputs.VERSION }}.apk
 
       - name: Upload Android Release Assets
+        if: env.SKIP_RELEASE != 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: UBAA-Android-v${{ steps.get_version.outputs.VERSION }}.apk
