@@ -187,6 +187,110 @@ class AuthViewModelInitializeAppTest {
     assertEquals("Test User", viewModel.uiState.value.userData?.name)
   }
 
+  @Test
+  fun `session expired event auto re-logs in with remembered credentials`() = runTest {
+    Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+    ConnectionModeStore.save(ConnectionMode.DIRECT)
+    UserDataStore.save(cn.edu.ubaa.model.dto.UserData("Test User", "22373333"))
+    CredentialStore.saveCredentials("22373333", "secret")
+    CredentialStore.setRememberPassword(true)
+    val authService = ValidSessionAuthService()
+    val viewModel =
+        AuthViewModel(
+            authService = authService,
+            userService = StubUserService(),
+        )
+
+    // 先通过乐观启动进入已登录状态
+    viewModel.initializeApp()
+    advanceUntilIdle()
+    assertTrue(viewModel.uiState.value.isLoggedIn)
+    assertEquals(0, authService.loginCalls)
+
+    // 业务 API 探测到会话失效 → 事件触发恢复 → 静默重登
+    viewModel.handleSessionExpired()
+    advanceUntilIdle()
+
+    assertEquals(1, authService.clearCalls)
+    assertEquals(1, authService.loginCalls)
+    assertEquals(0, authService.preloadCalls)
+    assertTrue(viewModel.uiState.value.isLoggedIn)
+    assertEquals("Test User", viewModel.uiState.value.userData?.name)
+  }
+
+  @Test
+  fun `session expired event ignored when not logged in`() = runTest {
+    Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+    ConnectionModeStore.save(ConnectionMode.DIRECT)
+    CredentialStore.saveCredentials("22373333", "secret")
+    CredentialStore.setRememberPassword(true)
+    val authService = ValidSessionAuthService()
+    val viewModel =
+        AuthViewModel(
+            authService = authService,
+            userService = StubUserService(),
+        )
+
+    viewModel.handleSessionExpired()
+    advanceUntilIdle()
+
+    assertEquals(0, authService.loginCalls)
+    assertEquals(0, authService.clearCalls)
+  }
+
+  /** 会话始终有效的假服务：initializeApp 正常进入主界面，供失效恢复测试用。 */
+  private class ValidSessionAuthService : AuthService() {
+    var clearCalls = 0
+      private set
+
+    var preloadCalls = 0
+      private set
+
+    var loginCalls = 0
+      private set
+
+    override fun hasPersistedSession(): Boolean = true
+
+    override fun applyStoredTokens() {}
+
+    override fun clearStoredSession() {
+      clearCalls++
+    }
+
+    override suspend fun preloadLoginState(): Result<LoginPreloadResponse> {
+      preloadCalls++
+      return Result.failure(IllegalStateException("preload should not be called"))
+    }
+
+    override suspend fun login(
+        username: String,
+        password: String,
+        captcha: String?,
+        execution: String?,
+    ): Result<LoginResponse> {
+      loginCalls++
+      return Result.success(
+          LoginResponse(
+              user = cn.edu.ubaa.model.dto.UserData("Test User", "22373333"),
+              accessToken = "token",
+              refreshToken = "refresh",
+              accessTokenExpiresAt = "",
+              refreshTokenExpiresAt = "",
+          )
+      )
+    }
+
+    override suspend fun getAuthStatus(): Result<SessionStatusResponse> {
+      return Result.success(
+          SessionStatusResponse(
+              user = cn.edu.ubaa.model.dto.UserData("Test User", "22373333"),
+              lastActivity = "",
+              authenticatedAt = "",
+          )
+      )
+    }
+  }
+
   private class InvalidSessionAuthService : AuthService() {
     var preloadCalls = 0
       private set

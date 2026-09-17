@@ -4,6 +4,7 @@ import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.api.ConnectionRuntime
 import cn.edu.ubaa.api.ModeScopedSessionStore
 import cn.edu.ubaa.api.ResettableSharedInstance
+import cn.edu.ubaa.api.SessionExpiredNotifier
 import cn.edu.ubaa.api.auth.ApiCallException
 import cn.edu.ubaa.api.auth.AuthServiceBackend
 import cn.edu.ubaa.api.auth.CaptchaRequiredClientException
@@ -866,12 +867,15 @@ internal fun clearLocalConnectionSession() {
   LocalUpstreamClientProvider.reset()
 }
 
-internal fun localUnauthenticatedApiException(): ApiCallException =
-    ApiCallException(
-        message = userFacingMessageForCode("unauthenticated", HttpStatusCode.Unauthorized),
-        status = HttpStatusCode.Unauthorized,
-        code = "unauthenticated",
-    )
+internal fun localUnauthenticatedApiException(): ApiCallException {
+  // 通知 App 层：本地会话已确认失效，需要同步 UI 登录态并尝试静默恢复
+  SessionExpiredNotifier.notifySessionExpired()
+  return ApiCallException(
+      message = userFacingMessageForCode("unauthenticated", HttpStatusCode.Unauthorized),
+      status = HttpStatusCode.Unauthorized,
+      code = "unauthenticated",
+  )
+}
 
 private fun nowIsoString(): String = Instant.fromEpochMilliseconds(nowMillis()).toString()
 

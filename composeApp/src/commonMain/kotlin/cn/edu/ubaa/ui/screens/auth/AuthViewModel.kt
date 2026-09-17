@@ -26,6 +26,7 @@ class AuthViewModel(
 ) : ViewModel() {
   private var userInfoLoadedOnce = false
   private var userInfoLoading = false
+  private var handlingExpiry = false
 
   private val _uiState = MutableStateFlow(AuthUiState())
   /** 整体认证状态流。 */
@@ -236,12 +237,8 @@ class AuthViewModel(
           .onFailure { error ->
             _uiState.value = _uiState.value.copy(isLoading = false)
             if (isAuthInvalidError(error)) {
-              // 会话确实失效（401 / 无效令牌）：清会话回登录；若保存过账号密码则自动重新登录，
-              // 避免用户再手动点一次登录；未保存凭据或需验证码时落到登录页。
-              authService.clearStoredSession()
-              UserDataStore.clear()
-              _uiState.value = _uiState.value.copy(isLoggedIn = false, userData = null)
-              if (CredentialStore.isRememberPassword()) login() else preloadLoginState()
+              // 会话确实失效（401 / 无效令牌）：统一走失效恢复（清会话 + 尝试静默重登）
+              recoverAfterSessionClear()
             } else {
               // 瞬态错误（网络/超时/服务器 5xx）：保留会话与乐观登录态，不强制登出。
               // 未乐观进入（无缓存）时尝试 SSO 预载恢复；已乐观进入则保持主界面，重试由各页自身处理。
@@ -332,15 +329,43 @@ class AuthViewModel(
           }
           .onFailure { error ->
             if (isAuthInvalidError(error)) {
-              // 会话确实失效了：清会话回登录；保存过账号密码则自动重新登录
-              authService.clearStoredSession()
-              UserDataStore.clear()
-              resetUserInfoState()
-              _uiState.value = AuthUiState()
-              if (CredentialStore.isRememberPassword()) login() else preloadLoginState()
+              // 会话确实失效了：统一走失效恢复（清会话 + 尝试静默重登）
+              recoverAfterSessionClear()
             }
             // 否则是瞬态错误（网络/超时/5xx）：保留会话状态，不强制登出
           }
+    }
+  }
+
+  /**
+   * 会话失效事件入口（由 [cn.edu.ubaa.api.SessionExpiredNotifier] 触发）。
+   *
+   * 本地业务 API 探测到登录态失效时会清理共享会话并发射事件；此处幂等处理： 仅当 UI 仍认为已登录时才执行恢复，避免与 [initializeApp]/[validateSession]
+   * 的 失效分支重复触发。
+   */
+  fun handleSessionExpired() {
+    if (!_uiState.value.isLoggedIn || handlingExpiry) return
+    handlingExpiry = true
+    try {
+      recoverAfterSessionClear()
+    } finally {
+      handlingExpiry = false
+    }
+  }
+
+  /** 会话确认失效后的统一恢复：清空本地会话与 UI 登录态，尝试静默重登或 SSO 预载。 */
+  private fun recoverAfterSessionClear() {
+    authService.clearStoredSession()
+    UserDataStore.clear()
+    resetUserInfoState()
+    _uiState.value = AuthUiState()
+    loadSavedCredentials()
+    // 保存过凭据（记住密码/自动登录）则尝试静默重登；否则先试 SSO 预载
+    // （cookie 有效可直达主界面），失败自然落到登录页。
+    if (CredentialStore.isRememberPassword() || CredentialStore.isAutoLogin()) {
+      login()
+    } else {
+      preloadLoginState()
     }
   }
 

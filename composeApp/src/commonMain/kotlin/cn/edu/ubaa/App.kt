@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.api.ConnectionRuntime
+import cn.edu.ubaa.api.SessionExpiredNotifier
 import cn.edu.ubaa.api.auth.AnnouncementService
 import cn.edu.ubaa.api.auth.AppAnnouncement
 import cn.edu.ubaa.api.auth.AppVersionCheckResponse
@@ -91,6 +92,12 @@ fun App() {
       selectedConnectionMode = ConnectionRuntime.resolveSelectedMode()
       modeResolved = true
       selectedConnectionMode?.let { bootstrapForMode(it) }
+    }
+
+    // 本地业务 API 探测到会话失效时（共享会话已被清理），同步 UI 登录态并尝试静默恢复，
+    // 避免"登录态掉了但功能全报错、不自动重登"。
+    LaunchedEffect(authViewModel) {
+      SessionExpiredNotifier.events.collect { authViewModel.handleSessionExpired() }
     }
 
     // 前台恢复时验证会话有效性
