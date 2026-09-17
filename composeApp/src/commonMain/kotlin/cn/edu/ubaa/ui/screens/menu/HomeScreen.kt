@@ -14,16 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MeetingRoom
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.School
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -47,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.TodayClass
 import cn.edu.ubaa.ui.common.util.formatMoney
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.datetime.TimeZone
@@ -408,7 +399,7 @@ private fun HomeTodoCard(
         }
       } else {
         Icon(
-            imageVector = Icons.Default.Info,
+            imageVector = LocalAppIcons.current.Info,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -456,7 +447,7 @@ private fun HomeEmptyCard(title: String, subtitle: String) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
       Icon(
-          imageVector = Icons.Default.Schedule,
+          imageVector = LocalAppIcons.current.Schedule,
           contentDescription = null,
           modifier = Modifier.size(36.dp),
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -520,14 +511,15 @@ private fun sourceContentColor(source: HomeTodoSource): Color =
       HomeTodoSource.YGDK -> MaterialTheme.colorScheme.onTertiaryContainer
     }
 
+@Composable
 private fun sourceIcon(source: HomeTodoSource): ImageVector =
     when (source) {
-      HomeTodoSource.BYKC -> Icons.Default.School
-      HomeTodoSource.SPOC -> Icons.Default.AssignmentTurnedIn
-      HomeTodoSource.JUDGE -> Icons.Default.Code
-      HomeTodoSource.CGYY -> Icons.Default.MeetingRoom
-      HomeTodoSource.SIGNIN -> Icons.Default.CheckCircle
-      HomeTodoSource.YGDK -> Icons.AutoMirrored.Filled.DirectionsRun
+      HomeTodoSource.BYKC -> LocalAppIcons.current.School
+      HomeTodoSource.SPOC -> LocalAppIcons.current.AssignmentTurnedIn
+      HomeTodoSource.JUDGE -> LocalAppIcons.current.Code
+      HomeTodoSource.CGYY -> LocalAppIcons.current.MeetingRoom
+      HomeTodoSource.SIGNIN -> LocalAppIcons.current.CheckCircle
+      HomeTodoSource.YGDK -> LocalAppIcons.current.DirectionsRun
     }
 
 /** 首页顶部余额不足提醒横幅：低于阈值时显示，可点击跳转充值，可手动关闭（当天不再显示）。 */
@@ -566,7 +558,7 @@ private fun BalanceAlertBanner(
       }
       IconButton(onClick = onDismiss) {
         Icon(
-            Icons.Default.Close,
+            LocalAppIcons.current.Close,
             contentDescription = "关闭提醒",
             tint = MaterialTheme.colorScheme.onErrorContainer,
         )

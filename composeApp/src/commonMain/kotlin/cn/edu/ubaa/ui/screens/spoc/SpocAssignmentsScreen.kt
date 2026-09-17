@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -46,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.SpocAssignmentSummaryDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** SPOC 作业列表页。 */
 @OptIn(ExperimentalMaterialApi::class)
@@ -83,7 +82,7 @@ fun SpocAssignmentsScreen(
           WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
       floatingActionButton = {
         FloatingActionButton(onClick = { showSearchDialog = true }) {
-          Icon(Icons.Default.Search, contentDescription = "搜索")
+          Icon(LocalAppIcons.current.Search, contentDescription = "搜索")
         }
       },
   ) { padding ->

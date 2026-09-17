@@ -6,19 +6,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Assignment
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.EventSeat
-import androidx.compose.material.icons.filled.Grade
-import androidx.compose.material.icons.filled.MeetingRoom
-import androidx.compose.material.icons.filled.NetworkWifi
-import androidx.compose.material.icons.filled.Paid
-import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +14,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 data class FeatureItem(
     val id: String,
@@ -58,73 +46,73 @@ fun RegularFeaturesScreen(
               id = "schedule",
               title = "课表查询",
               description = "查看课程表，支持周视图和学期切换",
-              icon = Icons.Default.CalendarToday,
+              icon = LocalAppIcons.current.CalendarToday,
           ),
           FeatureItem(
               id = "exam",
               title = "考试查询",
               description = "查看考试安排，支持学期切换",
-              icon = Icons.AutoMirrored.Filled.Assignment,
+              icon = LocalAppIcons.current.Assignment,
           ),
           FeatureItem(
               id = "grade",
               title = "成绩查询",
               description = "查看课程成绩、学分和绩点",
-              icon = Icons.Default.Grade,
+              icon = LocalAppIcons.current.Grade,
           ),
           FeatureItem(
               id = "bykc",
               title = "博雅课程",
               description = "浏览选课，查看已选，签到签退",
-              icon = Icons.Default.School,
+              icon = LocalAppIcons.current.School,
           ),
           FeatureItem(
               id = "classroom",
               title = "空教室查询",
               description = "查询各校区空闲教室",
-              icon = Icons.Default.MeetingRoom,
+              icon = LocalAppIcons.current.MeetingRoom,
           ),
           FeatureItem(
               id = "spoc",
               title = "SPOC作业",
               description = "查看当前学期作业与提交状态",
-              icon = Icons.Default.AssignmentTurnedIn,
+              icon = LocalAppIcons.current.AssignmentTurnedIn,
           ),
           FeatureItem(
               id = "judge",
               title = "希冀作业",
               description = "聚合希冀平台作业与提交进度",
-              icon = Icons.Default.Code,
+              icon = LocalAppIcons.current.Code,
           ),
           FeatureItem(
               id = "libbook",
               title = "图书馆座位",
               description = "预约图书馆座位并管理记录",
-              icon = Icons.Default.EventSeat,
+              icon = LocalAppIcons.current.EventSeat,
           ),
           FeatureItem(
               id = "card",
               title = "校园卡",
               description = "查询校园卡余额",
-              icon = Icons.Default.AccountBalanceWallet,
+              icon = LocalAppIcons.current.AccountBalanceWallet,
           ),
           FeatureItem(
               id = "network",
               title = "校园网",
               description = "查询免费、赠送与计费流量",
-              icon = Icons.Default.NetworkWifi,
+              icon = LocalAppIcons.current.NetworkWifi,
           ),
           FeatureItem(
               id = "zfw",
               title = "校园网充值",
               description = "登录自助服务门户完成缴费充值",
-              icon = Icons.Default.Paid,
+              icon = LocalAppIcons.current.Paid,
           ),
           FeatureItem(
               id = "electricity",
               title = "电费充值",
               description = "北航电费在线充值缴费",
-              icon = Icons.Default.Bolt,
+              icon = LocalAppIcons.current.Bolt,
           ),
       )
 

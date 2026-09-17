@@ -3,10 +3,6 @@ package cn.edu.ubaa.ui.screens.signin
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.SigninClassDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** 课堂签到主界面。 展示今日课程列表并提供一键签到按钮。 */
 @Composable
@@ -34,7 +31,7 @@ fun SigninScreen(viewModel: SigninViewModel) {
       snackbarHost = { SnackbarHost(snackbarHostState) },
       floatingActionButton = {
         FloatingActionButton(onClick = { viewModel.loadTodayClasses() }) {
-          Icon(Icons.Default.Refresh, "刷新")
+          Icon(LocalAppIcons.current.Refresh, "刷新")
         }
       },
   ) { padding ->
@@ -102,7 +99,7 @@ fun SigninClassCard(clazz: SigninClassDto, onSigninClick: () -> Unit, isSigningI
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
           Icon(
-              Icons.Default.AccessTime,
+              LocalAppIcons.current.AccessTime,
               null,
               Modifier.size(14.dp),
               MaterialTheme.colorScheme.onSurfaceVariant,
@@ -117,7 +114,7 @@ fun SigninClassCard(clazz: SigninClassDto, onSigninClick: () -> Unit, isSigningI
       }
       if (isSigned)
           Icon(
-              Icons.Default.CheckCircle,
+              LocalAppIcons.current.CheckCircle,
               "已签到",
               Modifier.size(32.dp),
               MaterialTheme.colorScheme.primary,

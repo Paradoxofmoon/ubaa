@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +16,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.ui.common.util.formatMoney
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** 电费购电原生 UI（无状态）。 */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -318,14 +315,14 @@ private fun PayPanel(
             label = { Text(num) },
             leadingIcon = {
               Icon(
-                  Icons.Default.History,
+                  LocalAppIcons.current.History,
                   contentDescription = null,
                   modifier = Modifier.size(16.dp),
               )
             },
             trailingIcon = {
               Icon(
-                  Icons.Default.Close,
+                  LocalAppIcons.current.Close,
                   contentDescription = "删除",
                   modifier = Modifier.size(16.dp).clickable { onHistoryRemove(num) },
               )
@@ -489,7 +486,7 @@ private fun PayWaySelector(
         Text(way.text, style = MaterialTheme.typography.bodyLarge)
         if (selected) {
           Icon(
-              Icons.Default.CheckCircle,
+              LocalAppIcons.current.CheckCircle,
               contentDescription = "已选择",
               tint = MaterialTheme.colorScheme.primary,
           )

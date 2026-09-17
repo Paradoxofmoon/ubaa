@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.JudgeAssignmentDetailDto
 import cn.edu.ubaa.model.dto.JudgeProblemDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** 希冀作业详情页。 */
 @Composable
@@ -48,7 +47,7 @@ fun JudgeAssignmentDetailScreen(
           WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
       floatingActionButton = {
         FloatingActionButton(onClick = onRetry) {
-          Icon(Icons.Default.Refresh, contentDescription = "刷新")
+          Icon(LocalAppIcons.current.Refresh, contentDescription = "刷新")
         }
       },
   ) { padding ->

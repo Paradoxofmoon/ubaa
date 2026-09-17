@@ -3,9 +3,6 @@ package cn.edu.ubaa.ui.screens.bykc
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.BykcCategoryStatisticsDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @Composable
 fun BykcStatisticsScreen(viewModel: BykcViewModel) {
@@ -149,7 +147,7 @@ fun BykcStatRow(category: BykcCategoryStatisticsDto) {
     ) {
       if (category.isQualified) {
         Icon(
-            imageVector = Icons.Default.CheckCircle,
+            imageVector = LocalAppIcons.current.CheckCircle,
             contentDescription = "达标",
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp),
@@ -162,7 +160,7 @@ fun BykcStatRow(category: BykcCategoryStatisticsDto) {
         )
       } else {
         Icon(
-            imageVector = Icons.Default.Warning,
+            imageVector = LocalAppIcons.current.Warning,
             contentDescription = "未达标",
             tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(18.dp),

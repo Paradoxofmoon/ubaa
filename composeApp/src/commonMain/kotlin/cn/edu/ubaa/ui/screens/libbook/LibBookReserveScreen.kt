@@ -25,9 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -62,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import cn.edu.ubaa.model.dto.LibBookSeatDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import ubaa.composeapp.generated.resources.Res
@@ -144,7 +142,7 @@ fun LibBookReserveScreen(viewModel: LibBookViewModel, onSubmitSuccess: () -> Uni
                     title = "楼馆",
                     trailing = {
                       IconButton(onClick = viewModel::refreshReserveData) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(LocalAppIcons.current.Refresh, contentDescription = "刷新")
                       }
                     },
                 )
@@ -383,7 +381,9 @@ private fun LibBookAreaMapDialog(
             TextButton(onClick = { transform = resetLibBookMapViewerTransform(transform) }) {
               Text("重置")
             }
-            IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "关闭") }
+            IconButton(onClick = onDismiss) {
+              Icon(LocalAppIcons.current.Close, contentDescription = "关闭")
+            }
           }
         }
 

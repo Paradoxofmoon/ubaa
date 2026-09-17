@@ -4,12 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.evaluation.EvaluationCourse
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /**
  * 自动评教功能的主屏幕组件。 展示待评教课程列表，允许用户选择部分课程并一键执行自动评教。 在评教过程中展示进度条，完成后展示结果汇总。
@@ -38,7 +33,7 @@ fun EvaluationScreen(viewModel: EvaluationViewModel) {
         if (hasSelectedPending && !uiState.isLoading && !uiState.isSubmitting) {
           ExtendedFloatingActionButton(
               onClick = { viewModel.submitEvaluations() },
-              icon = { Icon(Icons.Default.PlayArrow, null) },
+              icon = { Icon(LocalAppIcons.current.PlayArrow, null) },
               text = { Text("一键评教") },
               containerColor = MaterialTheme.colorScheme.primaryContainer,
               contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -85,7 +80,7 @@ fun EvaluationScreen(viewModel: EvaluationViewModel) {
                 onClick = { viewModel.loadPendingCourses() },
                 modifier = Modifier.padding(top = 16.dp),
             ) {
-              Icon(Icons.Default.Refresh, null)
+              Icon(LocalAppIcons.current.Refresh, null)
               Spacer(Modifier.width(8.dp))
               Text("重试")
             }
@@ -153,7 +148,8 @@ fun EvaluationScreen(viewModel: EvaluationViewModel) {
                   ) {
                     Icon(
                         imageVector =
-                            if (result.success) Icons.Default.Check else Icons.Default.Error,
+                            if (result.success) LocalAppIcons.current.Check
+                            else LocalAppIcons.current.Error,
                         contentDescription = null,
                         tint =
                             if (result.success) Color(0xFF4CAF50)
@@ -220,7 +216,7 @@ fun EvaluationCourseItem(course: EvaluationCourse, isSelected: Boolean, onToggle
       if (isEvaluated) {
         // 已评教：显示完成图标
         Icon(
-            imageVector = Icons.Default.CheckCircle,
+            imageVector = LocalAppIcons.current.CheckCircle,
             contentDescription = "已完成",
             tint = Color(0xFF4CAF50),
             modifier = Modifier.size(24.dp),
@@ -275,11 +271,24 @@ fun EvaluationProgressCard(
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically,
       ) {
-        Text(
-            text = if (progress.isCompleted) "🎉 评教已完成" else "📊 评教进度",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(
+              imageVector =
+                  if (progress.isCompleted) {
+                    LocalAppIcons.current.CheckCircle
+                  } else {
+                    LocalAppIcons.current.BarChart
+                  },
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+              text = if (progress.isCompleted) "评教已完成" else "评教进度",
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold,
+          )
+        }
         Text(
             text = "${progress.evaluatedCourses}/${progress.totalCourses}",
             style = MaterialTheme.typography.titleMedium,

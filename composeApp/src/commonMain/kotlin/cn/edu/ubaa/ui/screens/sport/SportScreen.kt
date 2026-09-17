@@ -15,13 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,6 +48,7 @@ import cn.edu.ubaa.model.dto.CgyyTimeSlotDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import cn.edu.ubaa.ui.screens.cgyy.CgyyEntryCodeScreen
 import cn.edu.ubaa.ui.screens.cgyy.CgyyEntryCodeViewModel
 import cn.edu.ubaa.ui.screens.cgyy.CgyySportCaptchaPoint
@@ -137,7 +131,13 @@ fun SportScreen(
                     showGrab = true
                   },
               ) {
-                Text("🎯 抢场")
+                Icon(
+                    LocalAppIcons.current.Target,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("抢场")
               }
             }
             SportCategorySelector(
@@ -205,7 +205,13 @@ fun SportScreen(
                 onClick = { showEntryCode = true },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
             ) {
-              Text("🎫 预约码（入场验票）")
+              Icon(
+                  LocalAppIcons.current.QrCode,
+                  contentDescription = null,
+                  modifier = Modifier.size(20.dp),
+              )
+              Spacer(modifier = Modifier.width(6.dp))
+              Text("预约码（入场验票）")
             }
           }
         }
@@ -342,7 +348,7 @@ private fun SportSiteSelector(
           modifier = Modifier.weight(1f),
       )
       Spacer(Modifier.width(4.dp))
-      Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+      Icon(LocalAppIcons.current.ArrowDropDown, contentDescription = null)
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
       sites.forEach { site ->
@@ -435,7 +441,7 @@ private fun SportTimeEntry(
               )
             }
             Icon(
-                Icons.Default.ChevronRight,
+                LocalAppIcons.current.ChevronRight,
                 contentDescription = "进入选择",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -462,7 +468,7 @@ private fun SportTimePickerScreen(
           verticalAlignment = Alignment.CenterVertically,
       ) {
         IconButton(onClick = onDone) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+          Icon(LocalAppIcons.current.ArrowBack, contentDescription = "返回")
         }
         Text(
             "选择时段",
@@ -663,10 +669,12 @@ private fun SportCompanionEntry(
             modifier = Modifier.weight(0.5f).padding(end = 4.dp),
         )
       }
-      IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, contentDescription = "刷新") }
-      IconButton(onClick = onOpen) { Icon(Icons.Default.Add, contentDescription = "添加同伴") }
+      IconButton(onClick = onRefresh) {
+        Icon(LocalAppIcons.current.Refresh, contentDescription = "刷新")
+      }
+      IconButton(onClick = onOpen) { Icon(LocalAppIcons.current.Add, contentDescription = "添加同伴") }
       Icon(
-          Icons.Default.ChevronRight,
+          LocalAppIcons.current.ChevronRight,
           contentDescription = "进入",
           tint = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -707,7 +715,7 @@ private fun SportCompanionPickerScreen(
           verticalAlignment = Alignment.CenterVertically,
       ) {
         IconButton(onClick = onDone) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+          Icon(LocalAppIcons.current.ArrowBack, contentDescription = "返回")
         }
         Text(
             "同伴（含本人最多 3 人）",
@@ -754,7 +762,7 @@ private fun SportCompanionPickerScreen(
                   }
                   IconButton(onClick = { onDelete(buddy.id) }) {
                     Icon(
-                        Icons.Default.Delete,
+                        LocalAppIcons.current.Delete,
                         contentDescription = "删除",
                         tint = MaterialTheme.colorScheme.error,
                     )
@@ -776,7 +784,7 @@ private fun SportCompanionPickerScreen(
           enabled = selectedBuddyIds.size < 2 && !isAddingBuddy,
           modifier = Modifier.fillMaxWidth().padding(16.dp),
       ) {
-        Icon(Icons.Default.Add, contentDescription = null)
+        Icon(LocalAppIcons.current.Add, contentDescription = null)
         Spacer(Modifier.width(4.dp))
         Text(if (selectedBuddyIds.size >= 2) "已达人数上限" else "添加同伴")
       }

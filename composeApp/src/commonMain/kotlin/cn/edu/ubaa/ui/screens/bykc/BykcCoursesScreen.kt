@@ -13,13 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -34,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.BykcCourseDto
 import cn.edu.ubaa.model.dto.BykcCourseStatus
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.delay
@@ -241,7 +235,7 @@ private fun BykcCourseFiltersBar(
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
               Icon(
-                  imageVector = Icons.Default.Tune,
+                  imageVector = LocalAppIcons.current.Tune,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.onPrimaryContainer,
                   modifier = Modifier.padding(if (isCompact) 8.dp else 10.dp),
@@ -267,11 +261,11 @@ private fun BykcCourseFiltersBar(
           Spacer(modifier = Modifier.width(10.dp))
           if (isCompact) {
             FilledTonalIconButton(onClick = onOpenFilters) {
-              Icon(Icons.Default.FilterList, contentDescription = "调整筛选")
+              Icon(LocalAppIcons.current.FilterList, contentDescription = "调整筛选")
             }
           } else {
             FilledTonalButton(onClick = onOpenFilters) {
-              Icon(Icons.Default.FilterList, contentDescription = null)
+              Icon(LocalAppIcons.current.FilterList, contentDescription = null)
               Spacer(modifier = Modifier.width(8.dp))
               Text(if (hasCustomSelections) "调整" else "筛选")
             }
@@ -328,7 +322,7 @@ private fun BykcCourseFiltersBar(
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
               )
               TextButton(onClick = onClearFilters) {
-                Icon(Icons.Default.Clear, contentDescription = null)
+                Icon(LocalAppIcons.current.Clear, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("重置默认")
               }
@@ -385,7 +379,7 @@ private fun BykcCourseFiltersDialog(
               color = MaterialTheme.colorScheme.primaryContainer,
           ) {
             Icon(
-                imageVector = Icons.Default.Tune,
+                imageVector = LocalAppIcons.current.Tune,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.padding(10.dp),
@@ -407,7 +401,7 @@ private fun BykcCourseFiltersDialog(
               title = "状态",
               selectedCount =
                   if (filters.statuses == defaultFilters.statuses) 0 else filters.statuses.size,
-              icon = Icons.Default.FilterList,
+              icon = LocalAppIcons.current.FilterList,
               iconTint = MaterialTheme.colorScheme.primary,
               supportingText = "全部取消则表示状态不限",
           ) {
@@ -426,7 +420,7 @@ private fun BykcCourseFiltersDialog(
             BykcFilterSectionCard(
                 title = "类别",
                 selectedCount = filters.categories.size,
-                icon = Icons.AutoMirrored.Filled.Label,
+                icon = LocalAppIcons.current.Label,
                 iconTint = MaterialTheme.colorScheme.tertiary,
                 supportingText = "可任选多项",
             ) {
@@ -446,7 +440,7 @@ private fun BykcCourseFiltersDialog(
             BykcFilterSectionCard(
                 title = "校区",
                 selectedCount = filters.campuses.size,
-                icon = Icons.Default.Place,
+                icon = LocalAppIcons.current.Place,
                 iconTint = MaterialTheme.colorScheme.secondary,
                 supportingText = "未指定即教师未设置开课地点所在校区",
             ) {
@@ -480,7 +474,7 @@ private fun BykcFilterChip(
           if (selected) {
             {
               Icon(
-                  imageVector = Icons.Default.Check,
+                  imageVector = LocalAppIcons.current.Check,
                   contentDescription = null,
                   tint = accentColor,
               )
@@ -712,7 +706,7 @@ fun CourseStatusChip(status: BykcCourseStatus, selected: Boolean) {
       },
       leadingIcon =
           if (selected) {
-            { Icon(Icons.Default.Check, contentDescription = null, tint = labelColor) }
+            { Icon(LocalAppIcons.current.Check, contentDescription = null, tint = labelColor) }
           } else null,
       colors =
           AssistChipDefaults.assistChipColors(

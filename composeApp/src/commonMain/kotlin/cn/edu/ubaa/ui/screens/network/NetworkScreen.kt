@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.NetworkWifi
-import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -33,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -108,7 +105,7 @@ fun NetworkScreen(
               TrafficInfoCard(
                   title = "计费流量剩余",
                   subtitle = "剩余 ${formatGb(remaining)}（不含套餐）",
-                  icon = Icons.Default.Paid,
+                  icon = LocalAppIcons.current.Paid,
                   isSecondary = true,
               )
             }
@@ -119,7 +116,7 @@ fun NetworkScreen(
               TrafficInfoCard(
                   title = "已用时长",
                   subtitle = formatSeconds(seconds),
-                  icon = Icons.Default.Paid,
+                  icon = LocalAppIcons.current.Paid,
                   isSecondary = true,
               )
             }
@@ -130,7 +127,7 @@ fun NetworkScreen(
               TrafficInfoCard(
                   title = "结算日期",
                   subtitle = date,
-                  icon = Icons.Default.CardGiftcard,
+                  icon = LocalAppIcons.current.CardGiftcard,
                   isSecondary = true,
               )
             }
@@ -171,7 +168,7 @@ private fun FreeTrafficCard(
           horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Icon(
-            imageVector = Icons.Default.NetworkWifi,
+            imageVector = LocalAppIcons.current.NetworkWifi,
             contentDescription = null,
             modifier = Modifier.size(28.dp),
             tint = MaterialTheme.colorScheme.primary,

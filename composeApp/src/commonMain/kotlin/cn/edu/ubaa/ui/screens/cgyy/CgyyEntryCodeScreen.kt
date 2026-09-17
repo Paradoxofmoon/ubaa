@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import cn.edu.ubaa.ui.screens.sport.cgyyCaptchaImageBitmap
 
 /** 入场验票「预约码」：显示服务端动态二维码 + 到期倒计时自动刷新（网页同款 10s 轮询）。动态码时整屏背景黑↔绿闪烁。 */
@@ -68,7 +67,7 @@ fun CgyyEntryCodeScreen(
       ) {
         IconButton(onClick = onExit) {
           Icon(
-              Icons.AutoMirrored.Filled.ArrowBack,
+              LocalAppIcons.current.ArrowBack,
               contentDescription = "返回",
               tint = if (dynamic) Color.White else MaterialTheme.colorScheme.onSurface,
           )

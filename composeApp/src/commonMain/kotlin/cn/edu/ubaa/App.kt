@@ -21,6 +21,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.api.ConnectionRuntime
+import cn.edu.ubaa.api.IconSet
+import cn.edu.ubaa.api.IconSetStore
 import cn.edu.ubaa.api.SessionExpiredNotifier
 import cn.edu.ubaa.api.auth.AnnouncementService
 import cn.edu.ubaa.api.auth.AppAnnouncement
@@ -28,6 +30,9 @@ import cn.edu.ubaa.api.auth.AppVersionCheckResponse
 import cn.edu.ubaa.api.auth.UpdateService
 import cn.edu.ubaa.api.storage.AnnouncementReadStore
 import cn.edu.ubaa.ui.common.components.ReleaseNotesText
+import cn.edu.ubaa.ui.icons.LocalAppIcons
+import cn.edu.ubaa.ui.icons.MaterialRoundedIcons
+import cn.edu.ubaa.ui.icons.TablerIcons
 import cn.edu.ubaa.ui.navigation.MainAppScreen
 import cn.edu.ubaa.ui.screens.auth.AuthViewModel
 import cn.edu.ubaa.ui.screens.auth.ConnectionModeSelectionScreen
@@ -54,224 +59,233 @@ fun App() {
   PreloadFonts()
 
   UBAATheme {
-    val authViewModel: AuthViewModel = viewModel { AuthViewModel() }
-    val uiState by authViewModel.uiState.collectAsState()
-    val loginForm by authViewModel.loginForm.collectAsState()
-    val appScope = rememberCoroutineScope()
-    val availableConnectionModes = remember { ConnectionRuntime.availableModes() }
-    var selectedConnectionMode by remember { mutableStateOf<ConnectionMode?>(null) }
-    var modeResolved by remember { mutableStateOf(false) }
+    // 图标风格偏好（设置页可切换，即时生效）
+    val iconSet by IconSetStore.current.collectAsState()
+    val appIcons =
+        when (iconSet) {
+          IconSet.TABLER -> TablerIcons.Set
+          IconSet.MATERIAL_ROUNDED -> MaterialRoundedIcons.Set
+        }
+    CompositionLocalProvider(LocalAppIcons provides appIcons) {
+      val authViewModel: AuthViewModel = viewModel { AuthViewModel() }
+      val uiState by authViewModel.uiState.collectAsState()
+      val loginForm by authViewModel.loginForm.collectAsState()
+      val appScope = rememberCoroutineScope()
+      val availableConnectionModes = remember { ConnectionRuntime.availableModes() }
+      var selectedConnectionMode by remember { mutableStateOf<ConnectionMode?>(null) }
+      var modeResolved by remember { mutableStateOf(false) }
 
-    // 启动流程控制状态
-    var isSplashFinished by remember { mutableStateOf(false) }
+      // 启动流程控制状态
+      var isSplashFinished by remember { mutableStateOf(false) }
 
-    // 更新检测逻辑
-    val updateService = remember { UpdateService() }
-    val announcementService = remember { AnnouncementService() }
-    var updateInfo by remember { mutableStateOf<AppVersionCheckResponse?>(null) }
-    var announcementInfo by remember { mutableStateOf<AppAnnouncement?>(null) }
-    val uriHandler = LocalUriHandler.current
+      // 更新检测逻辑
+      val updateService = remember { UpdateService() }
+      val announcementService = remember { AnnouncementService() }
+      var updateInfo by remember { mutableStateOf<AppVersionCheckResponse?>(null) }
+      var announcementInfo by remember { mutableStateOf<AppAnnouncement?>(null) }
+      val uriHandler = LocalUriHandler.current
 
-    suspend fun checkStartupPrompts() {
-      updateInfo = updateService.checkUpdate()
-      announcementInfo =
-          announcementService.checkAnnouncement()?.takeUnless {
-            AnnouncementReadStore.isRead(it.id)
-          }
-    }
-
-    suspend fun bootstrapForMode(mode: ConnectionMode) {
-      selectedConnectionMode = mode
-      // 先恢复登录态（决定能否直接进入主界面）。更新/公告检查是网络请求，
-      // 放后台异步执行，不阻塞 splash 结束、不拖延进入主界面。
-      authViewModel.initializeApp()
-      appScope.launch { checkStartupPrompts() }
-    }
-
-    LaunchedEffect(Unit) {
-      selectedConnectionMode = ConnectionRuntime.resolveSelectedMode()
-      modeResolved = true
-      selectedConnectionMode?.let { bootstrapForMode(it) }
-    }
-
-    // 本地业务 API 探测到会话失效时（共享会话已被清理），同步 UI 登录态并尝试静默恢复，
-    // 避免"登录态掉了但功能全报错、不自动重登"。
-    LaunchedEffect(authViewModel) {
-      SessionExpiredNotifier.events.collect { authViewModel.handleSessionExpired() }
-    }
-
-    // 前台恢复时验证会话有效性
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner, uiState.isLoggedIn) {
-      var wasInBackground = false
-      val observer = LifecycleEventObserver { _, event ->
-        when (event) {
-          Lifecycle.Event.ON_STOP -> wasInBackground = true
-          Lifecycle.Event.ON_RESUME -> {
-            if (wasInBackground) {
-              wasInBackground = false
-              if (uiState.isLoggedIn) authViewModel.validateSession()
+      suspend fun checkStartupPrompts() {
+        updateInfo = updateService.checkUpdate()
+        announcementInfo =
+            announcementService.checkAnnouncement()?.takeUnless {
+              AnnouncementReadStore.isRead(it.id)
             }
+      }
+
+      suspend fun bootstrapForMode(mode: ConnectionMode) {
+        selectedConnectionMode = mode
+        // 先恢复登录态（决定能否直接进入主界面）。更新/公告检查是网络请求，
+        // 放后台异步执行，不阻塞 splash 结束、不拖延进入主界面。
+        authViewModel.initializeApp()
+        appScope.launch { checkStartupPrompts() }
+      }
+
+      LaunchedEffect(Unit) {
+        selectedConnectionMode = ConnectionRuntime.resolveSelectedMode()
+        modeResolved = true
+        selectedConnectionMode?.let { bootstrapForMode(it) }
+      }
+
+      // 本地业务 API 探测到会话失效时（共享会话已被清理），同步 UI 登录态并尝试静默恢复，
+      // 避免"登录态掉了但功能全报错、不自动重登"。
+      LaunchedEffect(authViewModel) {
+        SessionExpiredNotifier.events.collect { authViewModel.handleSessionExpired() }
+      }
+
+      // 前台恢复时验证会话有效性
+      val lifecycleOwner = LocalLifecycleOwner.current
+      LaunchedEffect(lifecycleOwner, uiState.isLoggedIn) {
+        var wasInBackground = false
+        val observer = LifecycleEventObserver { _, event ->
+          when (event) {
+            Lifecycle.Event.ON_STOP -> wasInBackground = true
+            Lifecycle.Event.ON_RESUME -> {
+              if (wasInBackground) {
+                wasInBackground = false
+                if (uiState.isLoggedIn) authViewModel.validateSession()
+              }
+            }
+            else -> {}
           }
-          else -> {}
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        try {
+          awaitCancellation()
+        } finally {
+          lifecycleOwner.lifecycle.removeObserver(observer)
         }
       }
-      lifecycleOwner.lifecycle.addObserver(observer)
-      try {
-        awaitCancellation()
-      } finally {
-        lifecycleOwner.lifecycle.removeObserver(observer)
-      }
-    }
 
-    // 根据认证状态和加载进度决定何时隐藏 Splash 界面
-    LaunchedEffect(
-        uiState.isLoggedIn,
-        uiState.error,
-        uiState.isLoading,
-        uiState.isPreloading,
-        uiState.isRefreshingCaptcha,
-    ) {
-      val shouldEndSplash =
-          (uiState.isLoggedIn && uiState.userData != null) ||
-              (uiState.error != null &&
-                  !uiState.isLoading &&
-                  !uiState.isPreloading &&
-                  !uiState.isRefreshingCaptcha) ||
-              (!uiState.isLoading &&
-                  !uiState.isPreloading &&
-                  !uiState.isRefreshingCaptcha &&
-                  !uiState.isLoggedIn &&
-                  uiState.error == null &&
-                  !loginForm.autoLogin)
+      // 根据认证状态和加载进度决定何时隐藏 Splash 界面
+      LaunchedEffect(
+          uiState.isLoggedIn,
+          uiState.error,
+          uiState.isLoading,
+          uiState.isPreloading,
+          uiState.isRefreshingCaptcha,
+      ) {
+        val shouldEndSplash =
+            (uiState.isLoggedIn && uiState.userData != null) ||
+                (uiState.error != null &&
+                    !uiState.isLoading &&
+                    !uiState.isPreloading &&
+                    !uiState.isRefreshingCaptcha) ||
+                (!uiState.isLoading &&
+                    !uiState.isPreloading &&
+                    !uiState.isRefreshingCaptcha &&
+                    !uiState.isLoggedIn &&
+                    uiState.error == null &&
+                    !loginForm.autoLogin)
 
-      if (shouldEndSplash) isSplashFinished = true
-    }
-
-    // 版本更新对话框
-    if (updateInfo != null) {
-      val release = updateInfo!!
-      val releaseNotes = release.releaseNotes?.takeIf { it.isNotBlank() } ?: "点击下方按钮下载最新客户端。"
-      val updateMessage = buildString {
-        append("当前客户端版本：")
-        append(AppInfo.version)
-        append('\n')
-        append("最新客户端版本：")
-        append(release.latestVersion)
-        append("\n\n")
-        append(releaseNotes)
+        if (shouldEndSplash) isSplashFinished = true
       }
 
-      AlertDialog(
-          onDismissRequest = { updateInfo = null },
-          title = { Text("发现新版本") },
-          text = {
-            Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-              ReleaseNotesText(updateMessage)
-            }
-          },
-          confirmButton = {
-            TextButton(
-                onClick = {
-                  uriHandler.openUri(release.downloadUrl)
-                  updateInfo = null
-                }
-            ) {
-              Text("前往下载")
-            }
-          },
-          dismissButton = { TextButton(onClick = { updateInfo = null }) { Text("稍后再说") } },
-      )
-    }
+      // 版本更新对话框
+      if (updateInfo != null) {
+        val release = updateInfo!!
+        val releaseNotes = release.releaseNotes?.takeIf { it.isNotBlank() } ?: "点击下方按钮下载最新客户端。"
+        val updateMessage = buildString {
+          append("当前客户端版本：")
+          append(AppInfo.version)
+          append('\n')
+          append("最新客户端版本：")
+          append(release.latestVersion)
+          append("\n\n")
+          append(releaseNotes)
+        }
 
-    if (shouldShowAnnouncementDialog(updateInfo, announcementInfo)) {
-      val announcement = announcementInfo!!
-      AlertDialog(
-          onDismissRequest = {},
-          title = { Text(announcement.title) },
-          text = {
-            Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
-              Text(announcement.content)
-            }
-          },
-          confirmButton = {
-            TextButton(
-                onClick = {
-                  confirmAnnouncement(
-                      announcement = announcement,
-                      openUri = uriHandler::openUri,
-                      markRead = AnnouncementReadStore::markRead,
-                  )
-                  announcementInfo = null
-                }
-            ) {
-              Text(announcement.confirmText?.takeIf { it.isNotBlank() } ?: "我知道了")
-            }
-          },
-      )
-    }
+        AlertDialog(
+            onDismissRequest = { updateInfo = null },
+            title = { Text("发现新版本") },
+            text = {
+              Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                ReleaseNotesText(updateMessage)
+              }
+            },
+            confirmButton = {
+              TextButton(
+                  onClick = {
+                    uriHandler.openUri(release.downloadUrl)
+                    updateInfo = null
+                  }
+              ) {
+                Text("前往下载")
+              }
+            },
+            dismissButton = { TextButton(onClick = { updateInfo = null }) { Text("稍后再说") } },
+        )
+      }
 
-    // 视图切换状态机
-    when {
-      !modeResolved -> SplashScreen(modifier = Modifier.fillMaxSize())
-      selectedConnectionMode == null ->
-          ConnectionModeSelectionScreen(
-              availableModes = availableConnectionModes,
-              onConfirm = { mode ->
-                appScope.launch { bootstrapForMode(mode.also(ConnectionRuntime::switchMode)) }
+      if (shouldShowAnnouncementDialog(updateInfo, announcementInfo)) {
+        val announcement = announcementInfo!!
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text(announcement.title) },
+            text = {
+              Box(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                Text(announcement.content)
+              }
+            },
+            confirmButton = {
+              TextButton(
+                  onClick = {
+                    confirmAnnouncement(
+                        announcement = announcement,
+                        openUri = uriHandler::openUri,
+                        markRead = AnnouncementReadStore::markRead,
+                    )
+                    announcementInfo = null
+                  }
+              ) {
+                Text(announcement.confirmText?.takeIf { it.isNotBlank() } ?: "我知道了")
+              }
+            },
+        )
+      }
+
+      // 视图切换状态机
+      when {
+        !modeResolved -> SplashScreen(modifier = Modifier.fillMaxSize())
+        selectedConnectionMode == null ->
+            ConnectionModeSelectionScreen(
+                availableModes = availableConnectionModes,
+                onConfirm = { mode ->
+                  appScope.launch { bootstrapForMode(mode.also(ConnectionRuntime::switchMode)) }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        !isSplashFinished -> SplashScreen(modifier = Modifier.fillMaxSize())
+        uiState.isLoggedIn && uiState.userData != null -> {
+          val userData = uiState.userData!!
+          MainAppScreen(
+              userData = userData,
+              userInfo = uiState.userInfo,
+              connectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
+              availableConnectionModes = availableConnectionModes,
+              onEnsureUserInfo = { authViewModel.ensureUserInfoLoaded() },
+              onConnectionModeSelected = { mode ->
+                selectedConnectionMode = mode
+                authViewModel.switchConnectionMode(mode)
+                appScope.launch { checkStartupPrompts() }
               },
+              onLogoutClick = { authViewModel.logout() },
               modifier = Modifier.fillMaxSize(),
           )
-      !isSplashFinished -> SplashScreen(modifier = Modifier.fillMaxSize())
-      uiState.isLoggedIn && uiState.userData != null -> {
-        val userData = uiState.userData!!
-        MainAppScreen(
-            userData = userData,
-            userInfo = uiState.userInfo,
-            connectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
-            availableConnectionModes = availableConnectionModes,
-            onEnsureUserInfo = { authViewModel.ensureUserInfoLoaded() },
-            onConnectionModeSelected = { mode ->
-              selectedConnectionMode = mode
-              authViewModel.switchConnectionMode(mode)
-              appScope.launch { checkStartupPrompts() }
-            },
-            onLogoutClick = { authViewModel.logout() },
-            modifier = Modifier.fillMaxSize(),
-        )
+        }
+        else -> {
+          LoginScreen(
+              loginFormState = loginForm,
+              currentConnectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
+              availableConnectionModes = availableConnectionModes,
+              onUsernameChange = { authViewModel.updateUsername(it) },
+              onPasswordChange = { authViewModel.updatePassword(it) },
+              onCaptchaChange = { authViewModel.updateCaptcha(it) },
+              onRememberPasswordChange = { authViewModel.updateRememberPassword(it) },
+              onAutoLoginChange = { authViewModel.updateAutoLogin(it) },
+              onConnectionModeSelected = { mode ->
+                selectedConnectionMode = mode
+                authViewModel.switchConnectionMode(mode)
+                appScope.launch { checkStartupPrompts() }
+              },
+              onLoginClick = { authViewModel.login() },
+              onRefreshCaptcha = { authViewModel.refreshCaptcha() },
+              isLoading = uiState.isLoading,
+              isRefreshingCaptcha = uiState.isRefreshingCaptcha,
+              captchaRequired = uiState.captchaRequired,
+              captchaInfo = uiState.captchaInfo,
+              error = uiState.error,
+              modifier = Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize(),
+          )
+        }
       }
-      else -> {
-        LoginScreen(
-            loginFormState = loginForm,
-            currentConnectionMode = selectedConnectionMode ?: ConnectionMode.DIRECT,
-            availableConnectionModes = availableConnectionModes,
-            onUsernameChange = { authViewModel.updateUsername(it) },
-            onPasswordChange = { authViewModel.updatePassword(it) },
-            onCaptchaChange = { authViewModel.updateCaptcha(it) },
-            onRememberPasswordChange = { authViewModel.updateRememberPassword(it) },
-            onAutoLoginChange = { authViewModel.updateAutoLogin(it) },
-            onConnectionModeSelected = { mode ->
-              selectedConnectionMode = mode
-              authViewModel.switchConnectionMode(mode)
-              appScope.launch { checkStartupPrompts() }
-            },
-            onLoginClick = { authViewModel.login() },
-            onRefreshCaptcha = { authViewModel.refreshCaptcha() },
-            isLoading = uiState.isLoading,
-            isRefreshingCaptcha = uiState.isRefreshingCaptcha,
-            captchaRequired = uiState.captchaRequired,
-            captchaInfo = uiState.captchaInfo,
-            error = uiState.error,
-            modifier = Modifier.background(MaterialTheme.colorScheme.background).fillMaxSize(),
-        )
-      }
-    }
 
-    // 错误消息自动淡出
-    LaunchedEffect(uiState.error) {
-      if (uiState.error != null) {
-        delay(5000)
-        authViewModel.clearError()
+      // 错误消息自动淡出
+      LaunchedEffect(uiState.error) {
+        if (uiState.error != null) {
+          delay(5000)
+          authViewModel.clearError()
+        }
       }
     }
   }

@@ -14,13 +14,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AssignmentTurnedIn
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -33,6 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.ui.icons.AppIconSet
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 internal data class AdvancedFeatureItem(
     val id: String,
@@ -41,43 +36,43 @@ internal data class AdvancedFeatureItem(
     val icon: ImageVector,
 )
 
-internal fun advancedFeatureItems(): List<AdvancedFeatureItem> =
+internal fun advancedFeatureItems(icons: AppIconSet): List<AdvancedFeatureItem> =
     listOf(
         AdvancedFeatureItem(
             id = "cgyy",
             title = "研讨室预约",
             description = "查询、提交和管理研讨室预约",
-            icon = Icons.Default.DateRange,
+            icon = icons.DateRange,
         ),
         AdvancedFeatureItem(
             id = "venue",
             title = "场馆预约",
             description = "网页预约场馆（含支付）",
-            icon = Icons.Default.Place,
+            icon = icons.Place,
         ),
         AdvancedFeatureItem(
             id = "bus",
             title = "智慧校车",
             description = "校车班次查询与订票",
-            icon = Icons.Default.DirectionsBus,
+            icon = icons.DirectionsBus,
         ),
         AdvancedFeatureItem(
             id = "ygdk",
             title = "阳光打卡",
             description = "查看记录并提交体育活动打卡",
-            icon = Icons.Default.WbSunny,
+            icon = icons.WbSunny,
         ),
         AdvancedFeatureItem(
             id = "evaluation",
             title = "自动评教",
             description = "一键完成学期末评教任务",
-            icon = Icons.Default.AssignmentTurnedIn,
+            icon = icons.AssignmentTurnedIn,
         ),
         AdvancedFeatureItem(
             id = "more",
             title = "更多功能",
             description = "更多高级功能正在开发中...",
-            icon = Icons.Default.MoreHoriz,
+            icon = icons.MoreHoriz,
         ),
     )
 
@@ -91,7 +86,7 @@ fun AdvancedFeaturesScreen(
     gridState: LazyGridState,
     modifier: Modifier = Modifier,
 ) {
-  val features = advancedFeatureItems()
+  val features = advancedFeatureItems(LocalAppIcons.current)
 
   Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
     LazyVerticalGrid(

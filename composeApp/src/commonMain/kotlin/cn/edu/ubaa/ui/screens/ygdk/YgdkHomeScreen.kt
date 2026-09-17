@@ -17,10 +17,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.YgdkOverviewResponse
 import cn.edu.ubaa.model.dto.YgdkRecordDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @Composable
 fun YgdkHomeScreen(
@@ -66,7 +63,7 @@ fun YgdkHomeScreen(
       snackbarHost = { SnackbarHost(snackbarHostState) },
       floatingActionButton = {
         FloatingActionButton(onClick = onAddClick) {
-          Icon(Icons.Default.Add, contentDescription = "新增打卡")
+          Icon(LocalAppIcons.current.Add, contentDescription = "新增打卡")
         }
       },
   ) { padding ->
@@ -196,7 +193,7 @@ private fun YgdkRecordCard(record: YgdkRecordDto) {
   Card(modifier = Modifier.fillMaxWidth()) {
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null)
+        Icon(LocalAppIcons.current.DirectionsRun, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = record.itemName ?: "运动打卡",
@@ -206,7 +203,7 @@ private fun YgdkRecordCard(record: YgdkRecordDto) {
       }
       record.place?.let {
         Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(Icons.Default.Place, contentDescription = null)
+          Icon(LocalAppIcons.current.Place, contentDescription = null)
           Spacer(modifier = Modifier.width(8.dp))
           Text(text = it, style = MaterialTheme.typography.bodyMedium)
         }

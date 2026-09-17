@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AddCard
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -25,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.api.feature.CardPayWay
 import cn.edu.ubaa.ui.common.util.formatMoney
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -86,7 +83,7 @@ fun CardScreen(
             BalanceCard(
                 title = "卡余额",
                 amount = uiState.balance,
-                icon = Icons.Default.AccountBalanceWallet,
+                icon = LocalAppIcons.current.AccountBalanceWallet,
             )
           }
 
@@ -193,7 +190,7 @@ private fun RechargeSection(
           horizontalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         Icon(
-            Icons.Default.AddCard,
+            LocalAppIcons.current.AddCard,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
@@ -287,7 +284,7 @@ private fun FlowRowForPayWays(
         Text(way.text.ifBlank { way.name }, style = MaterialTheme.typography.bodyLarge)
         if (selected) {
           Icon(
-              Icons.Default.CheckCircle,
+              LocalAppIcons.current.CheckCircle,
               contentDescription = "已选择",
               tint = MaterialTheme.colorScheme.primary,
           )

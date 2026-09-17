@@ -6,11 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,6 +26,7 @@ import cn.edu.ubaa.ui.common.components.BottomNavTab
 import cn.edu.ubaa.ui.common.components.BottomNavigation
 import cn.edu.ubaa.ui.common.components.Sidebar
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import cn.edu.ubaa.ui.screens.balance.BalanceAlertUiState
 import cn.edu.ubaa.ui.screens.balance.BalanceAlertViewModel
 import cn.edu.ubaa.ui.screens.bus.BusScreen
@@ -858,7 +854,7 @@ fun MainAppScreen(
                 Box {
                   TextButton(onClick = { showExamTermMenu = true }) {
                     Text(examUiState.selectedTerm?.itemName ?: "选择学期")
-                    Icon(Icons.Default.ArrowDropDown, null)
+                    Icon(LocalAppIcons.current.ArrowDropDown, null)
                   }
                   DropdownMenu(
                       expanded = showExamTermMenu,
@@ -885,7 +881,7 @@ fun MainAppScreen(
                     },
                     enabled = currentTermIndex > 0,
                 ) {
-                  Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "上一学期")
+                  Icon(LocalAppIcons.current.KeyboardArrowLeft, "上一学期")
                 }
                 IconButton(
                     onClick = {
@@ -898,15 +894,15 @@ fun MainAppScreen(
                     enabled =
                         currentTermIndex != -1 && currentTermIndex < gradeUiState.terms.size - 1,
                 ) {
-                  Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "下一学期")
+                  Icon(LocalAppIcons.current.KeyboardArrowRight, "下一学期")
                 }
               } else if (currentScreen == AppScreen.SPOC_ASSIGNMENTS) {
                 IconButton(onClick = { showSpocSortFilterDialog = true }) {
-                  Icon(Icons.Default.Tune, contentDescription = "排序和筛选")
+                  Icon(LocalAppIcons.current.Tune, contentDescription = "排序和筛选")
                 }
               } else if (currentScreen == AppScreen.JUDGE_ASSIGNMENTS) {
                 IconButton(onClick = { showJudgeSortFilterDialog = true }) {
-                  Icon(Icons.Default.Tune, contentDescription = "排序和筛选")
+                  Icon(LocalAppIcons.current.Tune, contentDescription = "排序和筛选")
                 }
               }
             },

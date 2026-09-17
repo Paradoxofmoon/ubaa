@@ -24,13 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -60,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.YgdkItemDto
 import cn.edu.ubaa.ui.common.util.PlatformImagePicker
 import cn.edu.ubaa.ui.common.util.formatImageSize
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.math.abs
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -229,7 +223,7 @@ fun YgdkClockinFormScreen(
               label = { Text("运动地点") },
               placeholder = { Text("操场") },
               modifier = Modifier.fillMaxWidth(),
-              leadingIcon = { Icon(Icons.Default.Place, null) },
+              leadingIcon = { Icon(LocalAppIcons.current.Place, null) },
               singleLine = true,
           )
         }
@@ -250,13 +244,13 @@ fun YgdkClockinFormScreen(
               modifier = Modifier.fillMaxWidth(),
           ) {
             OutlinedButton(onClick = imagePicker::pickImage, modifier = Modifier.weight(1f)) {
-              Icon(Icons.Default.Image, contentDescription = null)
+              Icon(LocalAppIcons.current.Image, contentDescription = null)
               Spacer(modifier = Modifier.padding(4.dp))
               Text("选择图片")
             }
             if (imagePicker.canCapturePhoto) {
               OutlinedButton(onClick = imagePicker::capturePhoto, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                Icon(LocalAppIcons.current.PhotoCamera, contentDescription = null)
                 Spacer(modifier = Modifier.padding(4.dp))
                 Text("拍摄照片")
               }
@@ -283,7 +277,7 @@ fun YgdkClockinFormScreen(
                   )
                 }
                 IconButton(onClick = onClearPhoto) {
-                  Icon(Icons.Default.Delete, contentDescription = "清除图片")
+                  Icon(LocalAppIcons.current.Delete, contentDescription = "清除图片")
                 }
               }
             }
@@ -304,7 +298,7 @@ fun YgdkClockinFormScreen(
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.Default.Share, contentDescription = null)
+          Icon(LocalAppIcons.current.Share, contentDescription = null)
           Spacer(modifier = Modifier.padding(6.dp))
           Column(modifier = Modifier.weight(1f)) {
             Text(text = "分享到广场", fontWeight = FontWeight.Bold)
@@ -375,7 +369,7 @@ private fun YgdkTimeSelectorButton(
     onClick: () -> Unit,
 ) {
   OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-    Icon(Icons.Default.AccessTime, contentDescription = null)
+    Icon(LocalAppIcons.current.AccessTime, contentDescription = null)
     Spacer(modifier = Modifier.width(8.dp))
     Column(
         modifier = Modifier.fillMaxWidth(),

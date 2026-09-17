@@ -21,12 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.UserData
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @Composable
 fun Sidebar(
@@ -81,7 +76,7 @@ fun Sidebar(
                       .background(MaterialTheme.colorScheme.primary)
           ) {
             Icon(
-                imageVector = Icons.Default.AccountCircle,
+                imageVector = LocalAppIcons.current.AccountCircle,
                 contentDescription = "用户头像",
                 modifier = Modifier.fillMaxSize().padding(8.dp),
                 tint = MaterialTheme.colorScheme.onPrimary,
@@ -109,15 +104,19 @@ fun Sidebar(
       Spacer(modifier = Modifier.height(24.dp))
 
       // Menu Items
-      SidebarMenuItem(icon = Icons.Default.Person, title = "我的", onClick = onMyClick)
+      SidebarMenuItem(icon = LocalAppIcons.current.Person, title = "我的", onClick = onMyClick)
 
       Spacer(modifier = Modifier.height(8.dp))
 
-      SidebarMenuItem(icon = Icons.Default.Settings, title = "设置", onClick = onSettingsClick)
+      SidebarMenuItem(
+          icon = LocalAppIcons.current.Settings,
+          title = "设置",
+          onClick = onSettingsClick,
+      )
 
       Spacer(modifier = Modifier.height(8.dp))
 
-      SidebarMenuItem(icon = Icons.Default.Info, title = "关于", onClick = onAboutClick)
+      SidebarMenuItem(icon = LocalAppIcons.current.Info, title = "关于", onClick = onAboutClick)
 
       Spacer(modifier = Modifier.weight(1f))
 
@@ -130,7 +129,7 @@ fun Sidebar(
           border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
       ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+            imageVector = LocalAppIcons.current.ExitToApp,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
         )

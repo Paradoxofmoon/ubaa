@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.api.local.decodeCgyyCaptchaImage
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import cn.edu.ubaa.ui.screens.sport.cgyyCaptchaImageBitmap
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -132,7 +130,7 @@ fun BusScreen(
             Spacer(Modifier.weight(1f))
             TextButton(onClick = viewModel::searchShifts) {
               Icon(
-                  Icons.Default.Refresh,
+                  LocalAppIcons.current.Refresh,
                   contentDescription = "刷新",
                   modifier = Modifier.size(16.dp),
               )
@@ -235,7 +233,7 @@ private fun DirectionSelector(
       )
       IconButton(onClick = onSwap) {
         Icon(
-            Icons.Default.SwapHoriz,
+            LocalAppIcons.current.SwapHoriz,
             contentDescription = "交换出发/到达",
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
         )

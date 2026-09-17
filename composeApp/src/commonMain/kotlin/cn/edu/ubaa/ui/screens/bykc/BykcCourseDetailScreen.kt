@@ -3,9 +3,6 @@ package cn.edu.ubaa.ui.screens.bykc
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.BykcCourseDetailDto
 import cn.edu.ubaa.model.dto.BykcCourseDto
 import cn.edu.ubaa.model.dto.BykcCourseStatus
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.delay
@@ -140,16 +138,16 @@ fun BykcCourseDetailScreen(
             item {
               DetailCard(title = "基本信息") {
                 course.courseTeacher?.let { teacher ->
-                  DetailItem(label = "授课教师", value = teacher, icon = Icons.Default.Person)
+                  DetailItem(label = "授课教师", value = teacher, icon = LocalAppIcons.current.Person)
                 }
                 course.coursePosition?.let { position ->
-                  DetailItem(label = "上课地点", value = position, icon = Icons.Default.Place)
+                  DetailItem(label = "上课地点", value = position, icon = LocalAppIcons.current.Place)
                 }
                 course.organizerCollegeName?.let { organizerCollegeName ->
                   DetailItem(
                       label = "开课单位",
                       value = organizerCollegeName,
-                      icon = Icons.Default.Business,
+                      icon = LocalAppIcons.current.Business,
                   )
                 }
                 course.category?.let { category ->
@@ -161,7 +159,7 @@ fun BykcCourseDetailScreen(
                   DetailItem(
                       label = "课程分类",
                       value = categoryText,
-                      icon = Icons.Default.Category,
+                      icon = LocalAppIcons.current.Category,
                   )
                 }
               }
@@ -174,7 +172,7 @@ fun BykcCourseDetailScreen(
                     DetailItem(
                         label = "上课时间",
                         value = formatDateRange(startDate, endDate),
-                        icon = Icons.Default.Event,
+                        icon = LocalAppIcons.current.Event,
                     )
                   }
                 }
@@ -187,14 +185,14 @@ fun BykcCourseDetailScreen(
                       DetailItem(
                           label = selectTime.label,
                           value = selectTime.value,
-                          icon = Icons.Default.DateRange,
+                          icon = LocalAppIcons.current.DateRange,
                       )
                     }
                 course.courseCancelEndDate?.let { cancelEnd ->
                   DetailItem(
                       label = "退选截止",
                       value = formatDateTimeDisplay(cancelEnd),
-                      icon = Icons.Default.Close,
+                      icon = LocalAppIcons.current.Close,
                   )
                 }
               }
@@ -214,7 +212,7 @@ fun BykcCourseDetailScreen(
                         DetailItem(
                             label = "校区",
                             value = campuses.joinToString(" / "),
-                            icon = Icons.Default.Map,
+                            icon = LocalAppIcons.current.Map,
                         )
                       }
                   course.audienceColleges
@@ -223,7 +221,7 @@ fun BykcCourseDetailScreen(
                         DetailItem(
                             label = "学院",
                             value = colleges.joinToString(" / "),
-                            icon = Icons.Default.AccountBalance,
+                            icon = LocalAppIcons.current.AccountBalance,
                         )
                       }
                   course.audienceTerms
@@ -232,7 +230,7 @@ fun BykcCourseDetailScreen(
                         DetailItem(
                             label = "年级",
                             value = terms.joinToString(" / "),
-                            icon = Icons.Default.School,
+                            icon = LocalAppIcons.current.School,
                         )
                       }
                   course.audienceGroups
@@ -241,7 +239,7 @@ fun BykcCourseDetailScreen(
                         DetailItem(
                             label = "人群",
                             value = groups.joinToString(" / "),
-                            icon = Icons.Default.Groups,
+                            icon = LocalAppIcons.current.Groups,
                         )
                       }
                 }
@@ -254,10 +252,10 @@ fun BykcCourseDetailScreen(
               item {
                 DetailCard(title = "联系方式") {
                   course.courseContact?.let { contact ->
-                    DetailItem(label = "联系人", value = contact, icon = Icons.Default.Person)
+                    DetailItem(label = "联系人", value = contact, icon = LocalAppIcons.current.Person)
                   }
                   course.courseContactMobile?.let { mobile ->
-                    DetailItem(label = "联系电话", value = mobile, icon = Icons.Default.Phone)
+                    DetailItem(label = "联系电话", value = mobile, icon = LocalAppIcons.current.Phone)
                   }
                 }
               }
@@ -286,7 +284,7 @@ fun BykcCourseDetailScreen(
                       DetailItem(
                           label = "签到时间",
                           value = formatDateRange(signStart, signEnd),
-                          icon = Icons.AutoMirrored.Filled.Login,
+                          icon = LocalAppIcons.current.Login,
                       )
                     }
                   }
@@ -295,7 +293,7 @@ fun BykcCourseDetailScreen(
                       DetailItem(
                           label = "签退时间",
                           value = formatDateRange(signOutStart, signOutEnd),
-                          icon = Icons.AutoMirrored.Filled.Logout,
+                          icon = LocalAppIcons.current.Logout,
                       )
                     }
                   }
@@ -303,7 +301,7 @@ fun BykcCourseDetailScreen(
                     DetailItem(
                         label = "签到地点数",
                         value = "${config.signPoints.size} 个",
-                        icon = Icons.Default.Place,
+                        icon = LocalAppIcons.current.Place,
                     )
                   }
                 }
@@ -327,7 +325,7 @@ fun BykcCourseDetailScreen(
                           modifier = Modifier.weight(1f),
                           enabled = !operationInProgress && attendanceActionState.canSignIn,
                       ) {
-                        Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null)
+                        Icon(LocalAppIcons.current.Login, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("签到")
                       }
@@ -337,7 +335,7 @@ fun BykcCourseDetailScreen(
                           modifier = Modifier.weight(1f),
                           enabled = !operationInProgress && attendanceActionState.canSignOut,
                       ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                        Icon(LocalAppIcons.current.Logout, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("签退")
                       }
@@ -376,7 +374,7 @@ fun BykcCourseDetailScreen(
                               contentColor = MaterialTheme.colorScheme.error
                           ),
                   ) {
-                    Icon(Icons.Default.Close, contentDescription = null)
+                    Icon(LocalAppIcons.current.Close, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("退选")
                   }
@@ -386,7 +384,7 @@ fun BykcCourseDetailScreen(
                       modifier = Modifier.fillMaxWidth(),
                       enabled = canSelectCourse,
                   ) {
-                    Icon(Icons.Default.Check, contentDescription = null)
+                    Icon(LocalAppIcons.current.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("选择课程")
                   }

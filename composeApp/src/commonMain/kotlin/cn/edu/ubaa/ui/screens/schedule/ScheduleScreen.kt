@@ -10,11 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.edu.ubaa.model.dto.*
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /**
  * 课表展示主屏幕。 以网格形式展示选定周次的课程安排，并提供周次切换功能。
@@ -157,7 +153,7 @@ private fun ScheduleTopAppBar(
   CenterAlignedTopAppBar(
       expandedHeight = 56.dp,
       navigationIcon = {
-        IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
+        IconButton(onClick = onNavigateBack) { Icon(LocalAppIcons.current.ArrowBack, "返回") }
       },
       title = {
         Row(
@@ -174,10 +170,10 @@ private fun ScheduleTopAppBar(
       },
       actions = {
         IconButton(onClick = onPreviousClick, enabled = isPreviousEnabled) {
-          Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "上一周")
+          Icon(LocalAppIcons.current.KeyboardArrowLeft, "上一周")
         }
         IconButton(onClick = onNextClick, enabled = isNextEnabled) {
-          Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "下一周")
+          Icon(LocalAppIcons.current.KeyboardArrowRight, "下一周")
         }
       },
   )
@@ -220,7 +216,7 @@ private fun WeekSelectionSheet(
             },
             trailingContent = {
               if (week == selectedWeek)
-                  Icon(Icons.Default.Check, "已选择", tint = MaterialTheme.colorScheme.primary)
+                  Icon(LocalAppIcons.current.Check, "已选择", tint = MaterialTheme.colorScheme.primary)
             },
         )
       }

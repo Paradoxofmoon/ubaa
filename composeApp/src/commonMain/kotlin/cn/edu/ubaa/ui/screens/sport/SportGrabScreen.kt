@@ -10,14 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -52,6 +48,7 @@ import cn.edu.ubaa.model.dto.CgyyReservationSelectionDto
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.common.util.BackHandlerCompat
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** 抢场界面：草稿列表 / 预选编辑器 / 抢场监控 三态。 */
 @Composable
@@ -71,7 +68,7 @@ fun SportGrabScreen(
           verticalAlignment = Alignment.CenterVertically,
       ) {
         IconButton(onClick = { if (uiState.grabActive) viewModel.stopGrab() else onExit() }) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+          Icon(LocalAppIcons.current.ArrowBack, contentDescription = "返回")
         }
         Text(
             if (uiState.grabActive) "抢场中" else if (uiState.editingDraft != null) "预选编辑" else "抢场预选",
@@ -153,7 +150,7 @@ private fun DraftListContent(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Button(onClick = { if (currentSite != null) viewModel.newDraft(currentSite) }) {
-        Icon(Icons.Default.Add, contentDescription = null)
+        Icon(LocalAppIcons.current.Add, contentDescription = null)
         Text("新建预选")
       }
     }
@@ -215,7 +212,7 @@ private fun DraftCard(draft: PriorityDraft, viewModel: SportGrabViewModel) {
       ) {
         IconButton(onClick = { viewModel.deleteDraft(draft.id) }) {
           Icon(
-              Icons.Default.Delete,
+              LocalAppIcons.current.Delete,
               contentDescription = "删除",
               tint = MaterialTheme.colorScheme.error,
           )
@@ -412,9 +409,11 @@ private fun GrabCompanionSection(
     ) {
       Text("同伴（含本人最多 3 人）", style = MaterialTheme.typography.labelMedium)
       Row {
-        IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, contentDescription = "刷新") }
+        IconButton(onClick = onRefresh) {
+          Icon(LocalAppIcons.current.Refresh, contentDescription = "刷新")
+        }
         IconButton(onClick = { showAddDialog = true }) {
-          Icon(Icons.Default.Add, contentDescription = "添加同伴")
+          Icon(LocalAppIcons.current.Add, contentDescription = "添加同伴")
         }
       }
     }
@@ -451,7 +450,7 @@ private fun GrabCompanionSection(
               )
               IconButton(onClick = { onDelete(buddy.id) }) {
                 Icon(
-                    Icons.Default.Delete,
+                    LocalAppIcons.current.Delete,
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.error,
                 )
@@ -509,11 +508,20 @@ private fun GrabMonitorContent(uiState: SportGrabUiState, viewModel: SportGrabVi
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-          Text(
-              "🎉 抢场成功！",
-              style = MaterialTheme.typography.titleMedium,
-              color = MaterialTheme.colorScheme.primary,
-          )
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = LocalAppIcons.current.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "抢场成功！",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+          }
           Text("订单号 $it", style = MaterialTheme.typography.bodyMedium)
           if (uiState.isPaying) {
             Spacer(Modifier.height(6.dp))

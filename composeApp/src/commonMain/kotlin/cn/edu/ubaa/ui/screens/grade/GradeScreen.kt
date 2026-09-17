@@ -14,10 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Grade
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -36,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.Grade
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -191,7 +188,7 @@ private fun GradeCard(grade: Grade) {
     Column(modifier = Modifier.padding(16.dp)) {
       Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            Icons.Default.Book,
+            LocalAppIcons.current.Book,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
@@ -210,7 +207,7 @@ private fun GradeCard(grade: Grade) {
         GradeInfoRow(
             label = row.label,
             value = row.value,
-            icon = if (row.label == "成绩类型") Icons.Default.Person else null,
+            icon = if (row.label == "成绩类型") LocalAppIcons.current.Person else null,
         )
       }
     }
@@ -244,7 +241,7 @@ private fun GradeBadge(score: String?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-          Icons.Default.Grade,
+          LocalAppIcons.current.Grade,
           contentDescription = null,
           modifier = Modifier.width(16.dp),
           tint = MaterialTheme.colorScheme.onSecondaryContainer,

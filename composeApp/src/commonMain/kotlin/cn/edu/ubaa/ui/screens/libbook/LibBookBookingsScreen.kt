@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.LibBookBookingDto
 import cn.edu.ubaa.model.dto.canCancelBooking
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @Composable
 fun LibBookBookingsScreen(viewModel: LibBookViewModel) {
@@ -88,7 +87,7 @@ fun LibBookBookingsScreen(viewModel: LibBookViewModel) {
                       fontWeight = FontWeight.Bold,
                   )
                   IconButton(onClick = { viewModel.loadBookings() }) {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    Icon(LocalAppIcons.current.Refresh, contentDescription = "刷新")
                   }
                 }
               }

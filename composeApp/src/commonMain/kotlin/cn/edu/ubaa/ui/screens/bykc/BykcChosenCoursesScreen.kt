@@ -8,8 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -22,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.BykcChosenCourseDto
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -59,7 +58,7 @@ fun BykcChosenCoursesScreen(
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
           Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Default.EventBusy,
+                imageVector = LocalAppIcons.current.EventBusy,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -177,7 +176,7 @@ fun BykcChosenCourseCard(
           // 签到状态
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Default.AssignmentInd,
+                imageVector = LocalAppIcons.current.AssignmentInd,
                 contentDescription = null,
                 tint = checkinColor,
                 modifier = Modifier.size(20.dp),
@@ -195,7 +194,8 @@ fun BykcChosenCourseCard(
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector =
-                    if (course.pass == 1) Icons.Default.CheckCircle else Icons.Default.Info,
+                    if (course.pass == 1) LocalAppIcons.current.CheckCircle
+                    else LocalAppIcons.current.Info,
                 contentDescription = null,
                 tint = passColor,
                 modifier = Modifier.size(20.dp),
@@ -208,7 +208,7 @@ fun BykcChosenCourseCard(
           if (course.score != null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
               Icon(
-                  imageVector = Icons.Default.Grade,
+                  imageVector = LocalAppIcons.current.Grade,
                   contentDescription = null,
                   tint = MaterialTheme.colorScheme.secondary,
                   modifier = Modifier.size(20.dp),

@@ -5,12 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Chair
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.model.dto.Exam
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.collections.get
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -87,7 +82,8 @@ fun ExamTimelineList(arranged: List<Exam>, notArranged: List<Exam>) {
             )
             Icon(
                 imageVector =
-                    if (showFinished) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    if (showFinished) LocalAppIcons.current.ExpandLess
+                    else LocalAppIcons.current.ExpandMore,
                 contentDescription = if (showFinished) "收起" else "展开",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -285,7 +281,7 @@ fun ExamCard(exam: Exam, showSeat: Boolean, isFinished: Boolean = false) {
                   verticalAlignment = Alignment.CenterVertically,
               ) {
                 Icon(
-                    imageVector = Icons.Default.Chair,
+                    imageVector = LocalAppIcons.current.Chair,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint =
@@ -314,7 +310,7 @@ fun ExamCard(exam: Exam, showSeat: Boolean, isFinished: Boolean = false) {
 
         Row(verticalAlignment = Alignment.CenterVertically) {
           Icon(
-              imageVector = Icons.Default.AccessTime,
+              imageVector = LocalAppIcons.current.AccessTime,
               contentDescription = null,
               modifier = Modifier.size(16.dp),
               tint =
@@ -347,7 +343,7 @@ fun ExamCard(exam: Exam, showSeat: Boolean, isFinished: Boolean = false) {
 
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = Icons.Default.LocationOn,
+                imageVector = LocalAppIcons.current.LocationOn,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
                 tint =

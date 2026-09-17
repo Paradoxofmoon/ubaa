@@ -7,13 +7,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import cn.edu.ubaa.ui.screens.bykc.BykcFeatureCard
 
 @Composable
@@ -35,7 +32,7 @@ fun CgyyHomeScreen(
         BykcFeatureCard(
             title = "预约$venueLabel",
             description = "选择校区、楼栋和时段",
-            icon = Icons.Default.DateRange,
+            icon = LocalAppIcons.current.DateRange,
             onClick = onReserveClick,
         )
       }
@@ -43,7 +40,7 @@ fun CgyyHomeScreen(
         BykcFeatureCard(
             title = "我的预约",
             description = "查看状态、详情与取消预约",
-            icon = Icons.Default.History,
+            icon = LocalAppIcons.current.History,
             onClick = onOrdersClick,
         )
       }
@@ -51,7 +48,7 @@ fun CgyyHomeScreen(
         BykcFeatureCard(
             title = "查看密码",
             description = "查看门锁密码接口原始返回值",
-            icon = Icons.Default.Lock,
+            icon = LocalAppIcons.current.Lock,
             onClick = onLockCodeClick,
         )
       }

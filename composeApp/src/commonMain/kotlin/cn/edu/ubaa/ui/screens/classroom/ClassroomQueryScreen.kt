@@ -6,8 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.edu.ubaa.model.dto.ClassroomInfo
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -99,7 +98,7 @@ fun ClassroomQueryScreen(
         ) {
           Text(text = date, style = MaterialTheme.typography.bodyMedium)
           Icon(
-              Icons.Default.DateRange,
+              LocalAppIcons.current.DateRange,
               null,
               Modifier.size(20.dp),
               MaterialTheme.colorScheme.primary,
@@ -113,7 +112,7 @@ fun ClassroomQueryScreen(
           modifier = Modifier.weight(1.5f),
           shape = RoundedCornerShape(12.dp),
           singleLine = true,
-          leadingIcon = { Icon(Icons.Default.Search, null) },
+          leadingIcon = { Icon(LocalAppIcons.current.Search, null) },
       )
     }
 

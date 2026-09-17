@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,6 +19,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,8 +38,9 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
   var pendingMode by remember { mutableStateOf<ConnectionMode?>(null) }
+  val iconSet by cn.edu.ubaa.api.IconSetStore.current.collectAsState()
 
-  Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+  Column(modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
     Text(
         text = "连接模式",
         style = MaterialTheme.typography.titleLarge,
@@ -83,6 +87,64 @@ fun SettingsScreen(
               Spacer(modifier = Modifier.height(4.dp))
               Text(
                   text = mode.description,
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          }
+        }
+      }
+    }
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // 图标风格（全局即时切换，无需重启）
+    Text(
+        text = "图标风格",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(
+        text = "当前风格：${iconSet.displayName}",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.height(16.dp))
+
+    cn.edu.ubaa.api.IconSet.entries.forEach { set ->
+      Card(
+          modifier =
+              Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable {
+                if (set != iconSet) {
+                  cn.edu.ubaa.api.IconSetStore.set(set)
+                }
+              },
+          colors =
+              CardDefaults.cardColors(
+                  containerColor =
+                      if (set == iconSet) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                      } else {
+                        MaterialTheme.colorScheme.surface
+                      }
+              ),
+      ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = set == iconSet,
+                onClick = null,
+            )
+            Column(modifier = Modifier.padding(start = 12.dp)) {
+              Text(text = set.displayName, style = MaterialTheme.typography.titleMedium)
+              Spacer(modifier = Modifier.height(4.dp))
+              Text(
+                  text = set.description,
                   style = MaterialTheme.typography.bodyMedium,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
               )

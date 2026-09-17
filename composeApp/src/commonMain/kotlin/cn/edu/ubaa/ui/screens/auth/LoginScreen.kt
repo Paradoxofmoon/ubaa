@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.api.ConnectionMode
 import cn.edu.ubaa.model.dto.CaptchaInfo
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -261,7 +260,7 @@ private fun ConnectionModeMenuButton(
   Box(modifier = modifier) {
     FilledTonalButton(onClick = { expanded = true }, enabled = enabled) {
       Icon(
-          imageVector = Icons.Filled.Tune,
+          imageVector = LocalAppIcons.current.Tune,
           contentDescription = null,
           modifier = Modifier.size(18.dp),
       )

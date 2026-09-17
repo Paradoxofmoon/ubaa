@@ -3,8 +3,6 @@ package cn.edu.ubaa.ui.common.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -15,6 +13,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /**
  * 统一的内嵌网页（WebView）屏外壳：顶栏 + 加载/错误三态 + 内容区。
@@ -38,7 +37,7 @@ fun WebViewContainer(
             title = { Text(title) },
             navigationIcon = {
               IconButton(onClick = onBackClick) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                Icon(LocalAppIcons.current.ArrowBack, contentDescription = "返回")
               }
             },
             colors =

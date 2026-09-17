@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -42,6 +40,7 @@ import cn.edu.ubaa.model.dto.CgyyPurposeTypeDto
 import cn.edu.ubaa.model.dto.canCancelAt
 import cn.edu.ubaa.model.dto.displayReservationDateText
 import cn.edu.ubaa.model.dto.displayStatus
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -134,7 +133,7 @@ internal fun CgyyErrorState(message: String?, onRetry: () -> Unit, modifier: Mod
       verticalArrangement = Arrangement.Center,
   ) {
     Icon(
-        imageVector = Icons.Default.Info,
+        imageVector = LocalAppIcons.current.Info,
         contentDescription = null,
         modifier = Modifier.size(36.dp),
         tint = MaterialTheme.colorScheme.error,

@@ -4,10 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.ui.icons.LocalAppIcons
 
 /** 博雅课程功能主页。 提供进入选课列表、我的课程和统计数据的入口。 */
 @Composable
@@ -41,7 +38,7 @@ fun BykcHomeScreen(
         BykcFeatureCard(
             title = "选择课程",
             description = "浏览可选博雅课程",
-            icon = Icons.AutoMirrored.Filled.List,
+            icon = LocalAppIcons.current.List,
             onClick = onSelectCourseClick,
         )
       }
@@ -49,7 +46,7 @@ fun BykcHomeScreen(
         BykcFeatureCard(
             title = "我的课程",
             description = "查看已选/签到签退",
-            icon = Icons.Default.Book,
+            icon = LocalAppIcons.current.Book,
             onClick = onMyCoursesClick,
         )
       }
@@ -57,7 +54,7 @@ fun BykcHomeScreen(
         BykcFeatureCard(
             title = "课程统计",
             description = "查看学时统计",
-            icon = Icons.Default.BarChart,
+            icon = LocalAppIcons.current.BarChart,
             onClick = onStatisticsClick,
         )
       }
