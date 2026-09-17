@@ -1208,6 +1208,7 @@ fun MainAppScreen(
                     uiState = networkUiState,
                     onRefresh = { viewModel.refresh() },
                     onRetry = { viewModel.refresh() },
+                    onGoToRecharge = { navigateTo(AppScreen.ZFW) },
                 )
               }
           AppScreen.ZFW ->

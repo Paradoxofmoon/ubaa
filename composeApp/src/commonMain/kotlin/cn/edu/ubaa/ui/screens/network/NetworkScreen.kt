@@ -21,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,6 +38,7 @@ fun NetworkScreen(
     uiState: NetworkUiState,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
+    onGoToRecharge: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
   val pullRefreshState =
@@ -86,7 +88,20 @@ fun NetworkScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                 )
-                Button(onClick = onRetry) { Text("重试") }
+                if (uiState.needsZfwLogin) {
+                  Button(
+                      onClick = onGoToRecharge,
+                      modifier = Modifier.fillMaxWidth().height(48.dp),
+                  ) {
+                    Text("去充值页登录")
+                  }
+                }
+                OutlinedButton(
+                    onClick = onRetry,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                  Text("重试")
+                }
               }
             }
           }

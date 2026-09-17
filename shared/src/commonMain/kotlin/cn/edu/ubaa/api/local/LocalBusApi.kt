@@ -65,7 +65,7 @@ internal class LocalBusApiBackend : BusApiBackend {
 
   override suspend fun getIndexPage(): Result<BusIndexPageDto> =
       execute("校车页面加载失败，请稍后重试") {
-        val html = sessionGet("/wechat/indexPage").bodyAsText()
+        val html = sessionGetText("/wechat/indexPage").text
         val page = parseIndexPage(html)
         indexCsrfToken = page.csrfToken.takeIf { it.isNotBlank() }
         page
@@ -74,11 +74,11 @@ internal class LocalBusApiBackend : BusApiBackend {
   override suspend fun getSessionUser(): Result<BusSessionUserDto> =
       execute("用户信息加载失败，请稍后重试") {
         val body =
-            sessionPost(
+            sessionPostText(
                     "/wechat/waitingOrder",
                     form = mapOf("status" to "1", "page" to "-1"),
                 )
-                .bodyAsText()
+                .text
         val raw = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
         if (raw == null) BusSessionUserDto()
         else {
@@ -98,22 +98,23 @@ internal class LocalBusApiBackend : BusApiBackend {
       execute("车次查询失败，请稍后重试") {
         val csrf =
             indexCsrfToken
-                ?: parseIndexPage(sessionGet("/wechat/indexPage").bodyAsText()).csrfToken.also {
+                ?: parseIndexPage(sessionGetText("/wechat/indexPage").text).csrfToken.also {
                   indexCsrfToken = it
                 }
-        val response =
-            sessionPost(
-                "/wechat/ShiftsSearch",
-                form =
-                    mapOf(
-                        "up_origin_name" to origin,
-                        "up_terminal_name" to terminal,
-                        "shifts_date" to date,
-                        "act" to "search",
-                    ),
-                csrf = csrf,
-            )
-        val raw = json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val body =
+            sessionPostText(
+                    "/wechat/ShiftsSearch",
+                    form =
+                        mapOf(
+                            "up_origin_name" to origin,
+                            "up_terminal_name" to terminal,
+                            "shifts_date" to date,
+                            "act" to "search",
+                        ),
+                    csrf = csrf,
+                )
+                .text
+        val raw = json.parseToJsonElement(body).jsonObject
         val shifts =
             raw["list"]
                 ?.jsonArray
@@ -178,7 +179,7 @@ internal class LocalBusApiBackend : BusApiBackend {
   ): Result<BusTicketDetailDto> =
       execute("车票信息加载失败，请稍后重试") {
         val html =
-            sessionGet(
+            sessionGetText(
                     "/wechat/ticketInfoPage",
                     params =
                         mapOf(
@@ -186,7 +187,7 @@ internal class LocalBusApiBackend : BusApiBackend {
                             "shifts_number" to shiftsNumber,
                         ),
                 )
-                .bodyAsText()
+                .text
         if (html.contains("未到购票时间")) {
           throw ApiCallException("该车次未到购票时间，暂不可订", HttpStatusCode.BadRequest, "bus_not_open")
         }
@@ -211,18 +212,19 @@ internal class LocalBusApiBackend : BusApiBackend {
       csrfToken: String,
   ): Result<BusBuyResultDto> =
       execute("订票失败，请稍后重试") {
-        val response =
-            sessionPost(
-                "/wechat/buyTicketForWX",
-                form =
-                    mapOf(
-                        "checkStr" to checkStr,
-                        "shifts_date" to date,
-                        "shifts_number" to shiftsNumber,
-                    ),
-                csrf = csrfToken,
-            )
-        val raw = json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val body =
+            sessionPostText(
+                    "/wechat/buyTicketForWX",
+                    form =
+                        mapOf(
+                            "checkStr" to checkStr,
+                            "shifts_date" to date,
+                            "shifts_number" to shiftsNumber,
+                        ),
+                    csrf = csrfToken,
+                )
+                .text
+        val raw = json.parseToJsonElement(body).jsonObject
         val result =
             BusBuyResultDto(
                 status = raw["status"]?.jsonPrimitive?.contentOrNull.orEmpty(),
@@ -253,8 +255,9 @@ internal class LocalBusApiBackend : BusApiBackend {
       sessionReady = false
       val storage = LocalCookieStore.storage(ConnectionMode.DIRECT)
       try {
-        // 0) 已有校车 beihang2 会话直接可用
-        if (hasBeihang2(storage)) {
+        // 0) 已有校车 beihang2 会话直接可用（强制重登时不可信：cookie 可能已过期，
+        //    过期后服务端返回 200 +「未获取到认证信息」，需走 CAS/token 重新建立）
+        if (!force && hasBeihang2(storage)) {
           sessionReady = true
           return@withLock
         }
@@ -400,6 +403,54 @@ internal class LocalBusApiBackend : BusApiBackend {
     }
   }
 
+  /** 文本响应：已读取 body，便于检测「未登录」页（200 + 未获取到认证信息）。 */
+  private class BusHttpBody(val status: HttpStatusCode, val finalUrl: String, val text: String)
+
+  private suspend fun sessionGetText(
+      path: String,
+      params: Map<String, String> = emptyMap(),
+  ): BusHttpBody = withSessionRetryBody {
+    val response =
+        directClient().get(busUrl(path)) {
+          params.forEach { (k, v) -> parameter(k, v) }
+          header(
+              HttpHeaders.Accept,
+              "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          )
+          header(HttpHeaders.Referrer, referrerUrl)
+          header(HttpHeaders.UserAgent, BUS_USER_AGENT)
+        }
+    BusHttpBody(
+        status = response.status,
+        finalUrl = response.call.request.url.toString(),
+        text = response.bodyAsText(),
+    )
+  }
+
+  private suspend fun sessionPostText(
+      path: String,
+      form: Map<String, String>,
+      csrf: String? = null,
+  ): BusHttpBody = withSessionRetryBody {
+    val response =
+        directClient().post(busUrl(path)) {
+          header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
+          header(HttpHeaders.Referrer, referrerUrl)
+          header(HttpHeaders.UserAgent, BUS_USER_AGENT)
+          header("X-Requested-With", "XMLHttpRequest")
+          if (!csrf.isNullOrBlank()) {
+            header("X-CSRF-TOKEN", csrf)
+          }
+          val parameters = Parameters.build { form.forEach { (k, v) -> append(k, v) } }
+          setBody(FormDataContent(parameters))
+        }
+    BusHttpBody(
+        status = response.status,
+        finalUrl = response.call.request.url.toString(),
+        text = response.bodyAsText(),
+    )
+  }
+
   private suspend fun readBodyBytes(response: HttpResponse): ByteArray = response.body()
 
   private suspend fun withSessionRetry(block: suspend () -> HttpResponse): HttpResponse {
@@ -411,6 +462,22 @@ internal class LocalBusApiBackend : BusApiBackend {
     }
     return response
   }
+
+  /** 文本请求重试：会话过期（未登录页/跳转 SSO）时强制重登后重试一次。 */
+  private suspend fun withSessionRetryBody(block: suspend () -> BusHttpBody): BusHttpBody {
+    ensureLogin()
+    var body = block()
+    if (isBusSessionExpired(body)) {
+      ensureLogin(force = true)
+      body = block()
+    }
+    return body
+  }
+
+  private fun isBusSessionExpired(body: BusHttpBody): Boolean =
+      body.status == HttpStatusCode.Unauthorized ||
+          body.finalUrl.contains("sso.buaa.edu.cn", ignoreCase = true) ||
+          body.text.contains("未获取到认证信息")
 
   private fun isLoginRedirect(response: HttpResponse): Boolean {
     if (response.status == HttpStatusCode.Unauthorized) return true
