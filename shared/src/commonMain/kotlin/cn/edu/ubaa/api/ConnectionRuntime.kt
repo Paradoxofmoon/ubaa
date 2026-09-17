@@ -10,6 +10,7 @@ import cn.edu.ubaa.api.local.LocalUpstreamClientProvider
 import cn.edu.ubaa.api.storage.AuthTokensStore
 import cn.edu.ubaa.api.storage.ClientIdStore
 import cn.edu.ubaa.api.storage.CredentialStore
+import cn.edu.ubaa.api.storage.ScheduleCacheStore
 import cn.edu.ubaa.repository.GlobalTermRepository
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,6 +109,7 @@ object ConnectionRuntime {
     LocalUpstreamClientProvider.reset()
     LocalJudgeApiCache.clearAll()
     GlobalTermRepository.instance.clear()
+    ScheduleCacheStore.clear()
   }
 
   fun clearSelectedMode() {
