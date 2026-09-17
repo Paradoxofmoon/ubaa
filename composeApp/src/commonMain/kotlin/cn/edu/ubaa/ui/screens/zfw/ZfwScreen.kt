@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 import cn.edu.ubaa.ui.icons.LocalAppIcons
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -57,8 +58,24 @@ fun ZfwScreen(
     onRefreshPayCaptchaClick: () -> Unit,
     onSubmitPayClick: () -> Unit,
     onDismissQrcode: () -> Unit,
+    onChooseWx: () -> Unit,
+    onChooseAli: () -> Unit,
+    onClearPendingPay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+  // 用户选定支付方式后，用不可见 WebView 加载真实收银台页(cashier.cc-pay.cn)，
+  // 注入 JS 自动点击所选渠道，由收银台页 JS 触发 scheme 唤起微信/支付宝（与校园卡/电费/校车同款）。
+  val cashierUrl = uiState.pendingCashierUrl
+  if (cashierUrl != null && !uiState.payChannelPending && uiState.ccpayReady) {
+    SchemeTriggerWebView(
+        cashierUrl = cashierUrl,
+        channel = uiState.pendingChannel,
+        modifier = Modifier.size(1.dp),
+        onDiagnose = {},
+        onConsumed = onClearPendingPay,
+    )
+  }
+
   Box(modifier = modifier.fillMaxSize().padding(16.dp)) {
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
@@ -68,7 +85,9 @@ fun ZfwScreen(
         uiState.payQrcodeBase64 != null ->
             ZfwQrcodeContent(
                 qrcodeBase64 = uiState.payQrcodeBase64!!,
-                cashierUrl = uiState.payCashierUrl,
+                payMessage = uiState.payMessage,
+                onChooseWx = onChooseWx,
+                onChooseAli = onChooseAli,
                 onBackClick = onDismissQrcode,
             )
         uiState.loginSuccess ->
@@ -477,7 +496,9 @@ private fun PayCaptchaRow(
 @Composable
 private fun ZfwQrcodeContent(
     qrcodeBase64: String?,
-    cashierUrl: String?,
+    payMessage: String?,
+    onChooseWx: () -> Unit,
+    onChooseAli: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -489,7 +510,7 @@ private fun ZfwQrcodeContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
       Text(
-          text = "请扫码支付",
+          text = "选择支付方式",
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.Bold,
           modifier = Modifier.weight(1f),
@@ -497,10 +518,36 @@ private fun ZfwQrcodeContent(
       OutlinedButton(onClick = onBackClick) { Text("返回") }
     }
 
+    // 在 App 内支付：隐藏 WebView 加载 cc-pay 收银台并自动唤起微信/支付宝
+    Button(
+        onClick = onChooseWx,
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+    ) {
+      Text("微信支付")
+    }
+    OutlinedButton(
+        onClick = onChooseAli,
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+    ) {
+      Text("支付宝支付")
+    }
+
+    payMessage?.let {
+      Text(
+          text = it,
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = TextAlign.Center,
+      )
+    }
+
     Text(
-        text = "请使用微信或支付宝扫一扫完成支付",
+        text = "或使用其他设备扫码支付",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        textAlign = TextAlign.Center,
     )
 
     Card(
@@ -526,21 +573,13 @@ private fun ZfwQrcodeContent(
           )
         } else {
           Text(
-              text = "二维码加载失败\n请复制收银台地址到浏览器打开",
+              text = "二维码加载失败\n可在 App 内直接选择支付方式",
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               textAlign = TextAlign.Center,
           )
         }
       }
-    }
-
-    cashierUrl?.let { url ->
-      Text(
-          text = "收银台地址：$url",
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
     }
   }
 }

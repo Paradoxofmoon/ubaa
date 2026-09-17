@@ -1228,6 +1228,9 @@ fun MainAppScreen(
                     onRefreshPayCaptchaClick = viewModel::refreshPayCaptcha,
                     onSubmitPayClick = viewModel::submitPay,
                     onDismissQrcode = viewModel::dismissQrcode,
+                    onChooseWx = { viewModel.choosePayChannel("wx") },
+                    onChooseAli = { viewModel.choosePayChannel("ali") },
+                    onClearPendingPay = viewModel::clearPendingPay,
                 )
               }
           AppScreen.ELECTRICITY ->

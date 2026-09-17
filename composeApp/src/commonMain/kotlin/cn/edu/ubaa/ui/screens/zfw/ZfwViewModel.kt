@@ -6,6 +6,7 @@ import cn.edu.ubaa.api.feature.ZfwApi
 import cn.edu.ubaa.api.feature.ZfwLoginResult
 import cn.edu.ubaa.api.feature.ZfwPayPageData
 import cn.edu.ubaa.api.feature.ZfwPayResult
+import cn.edu.ubaa.api.local.ensureCcpaySession
 import cn.edu.ubaa.api.storage.CredentialStore
 import io.ktor.http.Cookie
 import kotlin.io.encoding.Base64
@@ -41,6 +42,12 @@ data class ZfwUiState(
     val isLoadingPayPage: Boolean = false,
     val payQrcodeBase64: String? = null,
     val payCashierUrl: String? = null,
+    // ---- 收银台支付状态（复用隐藏 WebView 自动唤起微信/支付宝）----
+    val pendingCashierUrl: String? = null,
+    val pendingChannel: String = "wx",
+    val payChannelPending: Boolean = false,
+    val ccpayReady: Boolean = false,
+    val payMessage: String? = null,
 )
 
 /** 校园网充值（深澜自助服务门户）ViewModel。 */
@@ -301,13 +308,24 @@ class ZfwViewModel(
           .onSuccess { result ->
             when (result) {
               is ZfwPayResult.Success -> {
+                val cashierUrl = result.cashierUrl.takeIf { it.isNotBlank() }
                 _state.value =
                     _state.value.copy(
                         isSubmittingPay = false,
                         payQrcodeBase64 = result.qrcodeBytes?.let { Base64.encode(it) },
                         payCashierUrl = result.cashierUrl,
+                        pendingCashierUrl = cashierUrl,
+                        payChannelPending = cashierUrl != null,
+                        payMessage = if (cashierUrl != null) "请选择支付方式" else "充值提交成功",
                         error = null,
                     )
+                if (cashierUrl != null) {
+                  // cc-pay 会话后台预热：不阻塞渠道选择，就绪后才渲染收银台
+                  viewModelScope.launch {
+                    runCatching { ensureCcpaySession() }
+                    _state.value = _state.value.copy(ccpayReady = true)
+                  }
+                }
               }
               is ZfwPayResult.Failure -> {
                 _state.value =
@@ -330,6 +348,30 @@ class ZfwViewModel(
     }
   }
 
+  /** 用户选定支付渠道（微信/支付宝）后，由隐藏 WebView 自动唤起支付 App。 */
+  fun choosePayChannel(channel: String) {
+    val s = _state.value
+    if (s.pendingCashierUrl.isNullOrBlank()) return
+    _state.value =
+        s.copy(
+            pendingChannel = if (channel == "ali") "ali" else "wx",
+            payChannelPending = false,
+            payMessage = "正在唤起支付…",
+        )
+  }
+
+  /** 支付唤起处理完成：清除收银台状态（二维码仍保留，可继续扫码）。 */
+  fun clearPendingPay() {
+    _state.value =
+        _state.value.copy(
+            pendingCashierUrl = null,
+            pendingChannel = "wx",
+            payChannelPending = false,
+            ccpayReady = false,
+            payMessage = null,
+        )
+  }
+
   /** 关闭二维码展示，返回充值表单。 */
   fun dismissQrcode() {
     _state.value =
@@ -337,6 +379,11 @@ class ZfwViewModel(
             payQrcodeBase64 = null,
             payCashierUrl = null,
             payCaptcha = "",
+            pendingCashierUrl = null,
+            pendingChannel = "wx",
+            payChannelPending = false,
+            ccpayReady = false,
+            payMessage = null,
         )
     loadPayCaptcha()
   }
