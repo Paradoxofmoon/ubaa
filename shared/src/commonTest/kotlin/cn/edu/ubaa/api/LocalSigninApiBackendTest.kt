@@ -598,7 +598,7 @@ class LocalSigninApiBackendTest {
                     headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         upstreamUrl ==
-            "https://iclass.buaa.edu.cn:8347/eschool/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
+            "https://iclass.buaa.edu.cn:8347/app/course/stu_scan_sign.action?courseSchedId=course-1&timestamp=1713600000" ->
             respond(
                 content =
                     ByteReadChannel(
@@ -629,9 +629,9 @@ class LocalSigninApiBackendTest {
     )
     assertTrue(
         observedUpstreamUrls.any {
-          it.startsWith("https://iclass.buaa.edu.cn:8347/eschool/app/course/stu_scan_sign.action")
+          it.startsWith("https://iclass.buaa.edu.cn:8347/app/course/stu_scan_sign.action")
         },
-        "signin submit should use iclass 8347 eschool endpoint in webvpn mode",
+        "signin submit should use iclass 8347 app path (no /eschool) in webvpn mode",
     )
   }
 
