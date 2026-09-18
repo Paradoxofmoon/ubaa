@@ -14,6 +14,7 @@ import cn.edu.ubaa.api.storage.UserDataStore
 import cn.edu.ubaa.model.dto.CaptchaInfo
 import cn.edu.ubaa.model.dto.UserData
 import cn.edu.ubaa.model.dto.UserInfo
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,8 @@ class AuthViewModel(
   private var handlingExpiry = false
   /** 是否为会话过期后的自动重登尝试（用于撞上验证码墙时给出友好提示）。 */
   private var autoReloginAttempt = false
+  /** 自动重登剩余重试次数（瞬态失败时用，最多 1 次）。 */
+  private var autoLoginRetriesLeft = 0
 
   private val _uiState = MutableStateFlow(AuthUiState())
   /** 整体认证状态流。 */
@@ -194,6 +197,17 @@ class AuthViewModel(
                       error = if (isAutoAttempt) "登录会话已过期，账号密码已自动填入，请输入验证码完成登录" else null,
                   )
             } else {
+              if (isAutoAttempt && autoLoginRetriesLeft > 0 && shouldRetryAutoLogin(exception)) {
+                autoLoginRetriesLeft--
+                _uiState.value = _uiState.value.copy(isLoading = false, error = null)
+                viewModelScope.launch {
+                  delay(1_500)
+                  autoReloginAttempt = true
+                  login()
+                }
+                return@onFailure
+              }
+              autoLoginRetriesLeft = 0
               _uiState.value =
                   _uiState.value.copy(isLoading = false, error = exception.message ?: "登录失败")
             }
@@ -369,6 +383,7 @@ class AuthViewModel(
     // （cookie 有效可直达主界面），失败自然落到登录页。
     if (CredentialStore.isRememberPassword() || CredentialStore.isAutoLogin()) {
       autoReloginAttempt = true
+      autoLoginRetriesLeft = 1
       login()
     } else {
       preloadLoginState()
@@ -384,6 +399,24 @@ class AuthViewModel(
     userInfoLoadedOnce = false
     userInfoLoading = false
     _uiState.value = _uiState.value.copy(userInfo = null)
+  }
+
+  /** 自动重登失败后是否值得重试：仅瞬态（超时/5xx/网络）值得；凭据/会话确凿错误不重试。 */
+  private fun shouldRetryAutoLogin(error: Throwable): Boolean {
+    if (error is CaptchaRequiredClientException) return false
+    if (error is ApiCallException) {
+      error.status?.value?.let { status ->
+        if (status == 401) return false
+        return status in 500..599
+      }
+      val message = error.message.orEmpty()
+      if (message.contains("账号或密码") || message.contains("验证码")) return false
+      val code = error.code
+      return code == null ||
+          code !in listOf("unauthenticated", "invalid_token", "invalid_credentials")
+    }
+    // 非 ApiCallException（网络/超时异常等）视为瞬态
+    return true
   }
 }
 
