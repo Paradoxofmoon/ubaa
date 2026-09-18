@@ -22,6 +22,7 @@ import cn.edu.ubaa.model.dto.CgyyOrderPayResult
 import cn.edu.ubaa.model.dto.CgyySportOrderSubmitRequest
 import cn.edu.ubaa.model.dto.CgyyVenueSiteDto
 import cn.edu.ubaa.ui.screens.cgyy.CgyySportCaptchaPoint
+import kotlin.random.Random
 import kotlin.time.Clock
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -940,7 +941,7 @@ class SportGrabViewModel(
           .getOrDefault(date)
 
   private fun randomDelay(minMs: Long, maxMs: Long): Long =
-      minMs + (Math.random() * (maxMs - minMs)).toLong()
+      minMs + (Random.nextDouble() * (maxMs - minMs)).toLong()
 
   internal companion object {
     const val GRAB_TIMEOUT_MINUTES = 15L
