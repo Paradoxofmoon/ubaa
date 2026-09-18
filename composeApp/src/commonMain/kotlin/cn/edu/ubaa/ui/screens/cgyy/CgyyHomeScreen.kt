@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.ui.icons.LocalAppIcons
-import cn.edu.ubaa.ui.screens.bykc.BykcFeatureCard
+import cn.edu.ubaa.ui.screens.menu.FeatureGridCard
 
 @Composable
 fun CgyyHomeScreen(
@@ -29,26 +29,29 @@ fun CgyyHomeScreen(
         modifier = Modifier.weight(1f),
     ) {
       item {
-        BykcFeatureCard(
+        FeatureGridCard(
             title = "预约$venueLabel",
             description = "选择校区、楼栋和时段",
             icon = LocalAppIcons.current.DateRange,
+            tone = 0,
             onClick = onReserveClick,
         )
       }
       item {
-        BykcFeatureCard(
+        FeatureGridCard(
             title = "我的预约",
             description = "查看状态、详情与取消预约",
             icon = LocalAppIcons.current.History,
+            tone = 1,
             onClick = onOrdersClick,
         )
       }
       item {
-        BykcFeatureCard(
+        FeatureGridCard(
             title = "查看密码",
             description = "查看门锁密码接口原始返回值",
             icon = LocalAppIcons.current.Lock,
+            tone = 2,
             onClick = onLockCodeClick,
         )
       }

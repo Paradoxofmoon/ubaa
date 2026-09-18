@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cn.edu.ubaa.ui.icons.LocalAppIcons
-import cn.edu.ubaa.ui.screens.bykc.BykcFeatureCard
+import cn.edu.ubaa.ui.screens.menu.FeatureGridCard
 
 @Composable
 fun LibBookHomeScreen(
@@ -27,18 +27,20 @@ fun LibBookHomeScreen(
         modifier = Modifier.weight(1f),
     ) {
       item {
-        BykcFeatureCard(
+        FeatureGridCard(
             title = "预约座位",
             description = "选择楼馆、分区和座位",
             icon = LocalAppIcons.current.EventSeat,
+            tone = 0,
             onClick = onReserveClick,
         )
       }
       item {
-        BykcFeatureCard(
+        FeatureGridCard(
             title = "我的预约",
             description = "查看座位预约与取消",
             icon = LocalAppIcons.current.History,
+            tone = 1,
             onClick = onBookingsClick,
         )
       }

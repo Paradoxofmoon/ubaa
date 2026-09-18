@@ -15,10 +15,10 @@ import androidx.compose.ui.unit.dp
 
 /**
  * 功能宫格通用卡片：彩色圆角图标容器 + 顶部对齐内容 + 细描边浅底。 [tone] 决定图标容器配色（0~3，循环使用 primary/secondary/tertiary/neutral
- * 四组）， 普通功能与高级功能两个页面共用，保证视觉一致。
+ * 四组）， 普通功能/高级功能主宫格及各二级功能主页共用，保证视觉一致。
  */
 @Composable
-internal fun FeatureGridCard(
+fun FeatureGridCard(
     title: String,
     description: String,
     icon: ImageVector,
