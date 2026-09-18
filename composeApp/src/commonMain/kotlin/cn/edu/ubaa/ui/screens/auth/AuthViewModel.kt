@@ -27,6 +27,8 @@ class AuthViewModel(
   private var userInfoLoadedOnce = false
   private var userInfoLoading = false
   private var handlingExpiry = false
+  /** 是否为会话过期后的自动重登尝试（用于撞上验证码墙时给出友好提示）。 */
+  private var autoReloginAttempt = false
 
   private val _uiState = MutableStateFlow(AuthUiState())
   /** 整体认证状态流。 */
@@ -148,6 +150,8 @@ class AuthViewModel(
 
   /** 执行登录提交。 */
   fun login() {
+    val isAutoAttempt = autoReloginAttempt
+    autoReloginAttempt = false
     val form = _loginForm.value
     val state = _uiState.value
     if (form.username.isBlank() || form.password.isBlank()) {
@@ -187,6 +191,7 @@ class AuthViewModel(
                       captchaRequired = true,
                       captchaInfo = exception.captcha,
                       execution = exception.execution,
+                      error = if (isAutoAttempt) "登录会话已过期，账号密码已自动填入，请输入验证码完成登录" else null,
                   )
             } else {
               _uiState.value =
@@ -363,6 +368,7 @@ class AuthViewModel(
     // 保存过凭据（记住密码/自动登录）则尝试静默重登；否则先试 SSO 预载
     // （cookie 有效可直达主界面），失败自然落到登录页。
     if (CredentialStore.isRememberPassword() || CredentialStore.isAutoLogin()) {
+      autoReloginAttempt = true
       login()
     } else {
       preloadLoginState()

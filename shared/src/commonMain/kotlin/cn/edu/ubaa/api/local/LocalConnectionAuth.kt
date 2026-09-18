@@ -663,10 +663,11 @@ internal class LocalAuthServiceBackend : AuthServiceBackend {
   override suspend fun logout(): Result<Unit> {
     return try {
       runCatching { LocalUpstreamClientProvider.shared().get(logoutUrl()) }
-      clearStoredSession()
+      // 注销必须彻底：连 cookie（SSO TGC 等）一起清除，否则下次启动会被旧会话静默拉回登录态
+      clearLocalConnectionSession(clearCookies = true)
       Result.success(Unit)
     } catch (e: Exception) {
-      clearStoredSession()
+      clearLocalConnectionSession(clearCookies = true)
       Result.failure(e.toUserFacingApiException("注销时出现异常，本地登录状态已清除"))
     }
   }
@@ -861,9 +862,17 @@ internal class LocalUserServiceBackend : UserServiceBackend {
   }
 }
 
-internal fun clearLocalConnectionSession() {
+/**
+ * 清理本地登录会话。 [clearCookies] 为 true 时连带清除全部模式下的 cookie（仅注销/切换模式等需要彻底退出时使用）。
+ *
+ * 会话过期恢复路径默认**保留 cookie**：SSO（sso.buaa.edu.cn）的 TGC 等 cookie 生命周期远长于业务会话， 保留它们才能在下次 preload/login
+ * 时命中 3xx 直达，实现免验证码的无感自动重登； 若被一并清掉，重登只能走账号密码 + 图形验证码，用户被迫手动登录。
+ */
+internal fun clearLocalConnectionSession(clearCookies: Boolean = false) {
   LocalAuthSessionStore.clear()
-  LocalCookieStore.clear()
+  if (clearCookies) {
+    LocalCookieStore.clearAllScopes()
+  }
   LocalUpstreamClientProvider.reset()
 }
 
