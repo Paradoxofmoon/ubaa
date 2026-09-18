@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /** 校园网充值界面 UI 状态。 */
 data class ZfwUiState(
@@ -46,7 +47,6 @@ data class ZfwUiState(
     val pendingCashierUrl: String? = null,
     val pendingChannel: String = "wx",
     val payChannelPending: Boolean = false,
-    val ccpayReady: Boolean = false,
     val payMessage: String? = null,
 )
 
@@ -320,10 +320,9 @@ class ZfwViewModel(
                         error = null,
                     )
                 if (cashierUrl != null) {
-                  // cc-pay 会话后台预热：不阻塞渠道选择，就绪后才渲染收银台
+                  // cc-pay 会话后台预热（限时 15s）：为收银台页建立登录态，否则页面只显示登录墙
                   viewModelScope.launch {
-                    runCatching { ensureCcpaySession() }
-                    _state.value = _state.value.copy(ccpayReady = true)
+                    runCatching { withTimeout(15_000) { ensureCcpaySession() } }
                   }
                 }
               }
@@ -367,7 +366,6 @@ class ZfwViewModel(
             pendingCashierUrl = null,
             pendingChannel = "wx",
             payChannelPending = false,
-            ccpayReady = false,
             payMessage = null,
         )
   }
@@ -382,7 +380,6 @@ class ZfwViewModel(
             pendingCashierUrl = null,
             pendingChannel = "wx",
             payChannelPending = false,
-            ccpayReady = false,
             payMessage = null,
         )
     loadPayCaptcha()

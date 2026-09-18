@@ -25,6 +25,7 @@ fun SchemeTriggerWebView(
     modifier: Modifier = Modifier.size(1.dp),
     onDiagnose: (String) -> Unit = {},
     onConsumed: () -> Unit = {},
+    consumeDelayMs: Long = 4500,
 ) {
   val js = buildAutoClickScript(channel)
   InAppWebView(
@@ -39,7 +40,7 @@ fun SchemeTriggerWebView(
       },
   )
   LaunchedEffect(cashierUrl) {
-    kotlinx.coroutines.delay(4500)
+    kotlinx.coroutines.delay(consumeDelayMs)
     onConsumed()
   }
 }

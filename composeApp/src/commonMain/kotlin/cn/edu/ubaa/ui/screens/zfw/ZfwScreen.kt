@@ -65,14 +65,16 @@ fun ZfwScreen(
 ) {
   // 用户选定支付方式后，用不可见 WebView 加载真实收银台页(cashier.cc-pay.cn)，
   // 注入 JS 自动点击所选渠道，由收银台页 JS 触发 scheme 唤起微信/支付宝（与校园卡/电费/校车同款）。
+  // 立即渲染、不等 cc-pay 会话预热（预热在校园网慢时可能阻塞十几秒）。
+  // 存活窗口取 12s：收银台 SPA 冷加载较慢，过短会导致页面未就绪就被销毁。
   val cashierUrl = uiState.pendingCashierUrl
-  if (cashierUrl != null && !uiState.payChannelPending && uiState.ccpayReady) {
+  if (cashierUrl != null && !uiState.payChannelPending) {
     SchemeTriggerWebView(
         cashierUrl = cashierUrl,
         channel = uiState.pendingChannel,
         modifier = Modifier.size(1.dp),
-        onDiagnose = {},
         onConsumed = onClearPendingPay,
+        consumeDelayMs = 12000,
     )
   }
 

@@ -396,12 +396,9 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
         )
     for (p in patterns) {
       val raw = p.find(html)?.value ?: continue
-      val decoded =
-          if (raw.contains("%3A", ignoreCase = true) || raw.contains("%2F", ignoreCase = true)) {
-            raw.replace("%3A", ":").replace("%2F", "/")
-          } else {
-            raw
-          }
+      // 服务端返回的收银台地址可能是整体百分号编码（%3F=?、%3D==、%26=& 等），
+      // 只解 %3A/%2F 会得到 cashier%3Fid%3D... 的坏 URL，WebView 加载必然失败。做完整解码。
+      val decoded = percentDecode(raw)
       return if (decoded.startsWith("https://") || decoded.startsWith("http://")) {
         decoded
       } else {
@@ -409,6 +406,27 @@ internal class LocalZfwApiBackend : ZfwApiBackend {
       }
     }
     return null
+  }
+
+  /** 完整百分号解码（处理 %XX 十六进制字节）。 */
+  private fun percentDecode(s: String): String {
+    if (!s.contains('%')) return s
+    val sb = StringBuilder(s.length)
+    var i = 0
+    while (i < s.length) {
+      val c = s[i]
+      if (c == '%' && i + 2 < s.length) {
+        val hex = s.substring(i + 1, i + 3).toIntOrNull(16)
+        if (hex != null) {
+          sb.append(hex.toChar())
+          i += 3
+          continue
+        }
+      }
+      sb.append(c)
+      i++
+    }
+    return sb.toString()
   }
 
   /** URL 参数 RFC3986 编码。 */

@@ -100,6 +100,15 @@ actual fun InAppWebView(
 
           webViewClient =
               object : WebViewClient() {
+                override fun onPageStarted(
+                    view: WebView,
+                    url: String?,
+                    favicon: android.graphics.Bitmap?,
+                ) {
+                  super.onPageStarted(view, url, favicon)
+                  url?.let { onPageError?.invoke("页面开始加载: ${it.take(180)}") }
+                }
+
                 override fun onReceivedError(
                     view: WebView,
                     request: WebResourceRequest,
@@ -108,6 +117,11 @@ actual fun InAppWebView(
                   val target = request.url.toString()
                   // 忽略本地打印服务探测失败（CLodop localhost 脚本，未安装属正常）
                   if (target.contains("localhost") || target.contains("127.0.0.1")) {
+                    return
+                  }
+                  // 主框架加载失败（DNS/连接/证书/404 等）必须上报，否则收银台加载失败无任何线索
+                  if (request.isForMainFrame) {
+                    onPageError?.invoke("页面加载失败: ${error.errorCode} ${error.description} $target")
                     return
                   }
                   // 资源级错误（非主框架）不打断页面，只上报诊断
