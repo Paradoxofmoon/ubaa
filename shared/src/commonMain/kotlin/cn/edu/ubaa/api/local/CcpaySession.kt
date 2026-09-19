@@ -63,35 +63,49 @@ suspend fun ensureCcpaySession() {
 /**
  * 从电费/校网下单返回的 payUrl 中解析出真正的 cc-pay 收银台地址。
  *
- * 支持两种形态：
+ * 支持多种形态：
  * 1. `https://pass.cc-pay.cn/login?backUrl=<url-encoded cashier 地址>` → 解码 backUrl 得 cashier 地址
  * 2. 直接就是 `https://cashier.cc-pay.cn/cashier?id=xxx` → 原样返回
+ * 3. 整体百分号编码（`https%3A%2F%2Fcashier.cc-pay.cn%2F...`）→ 先完整解码再识别
+ * 4. 部分编码（`https://cashier.cc-pay.cn/cashier%3Fid%3Dxxx`）或 backUrl 双重编码 → 多轮解码
  *
  * 返回 null 表示无法识别为 cc-pay 收银台地址。
  */
 fun extractCashierUrl(payUrl: String?): String? {
   if (payUrl.isNullOrBlank()) return null
-  val trimmed = payUrl.trim()
+  var trimmed = payUrl.trim()
 
-  // 形态 2：直接就是收银台地址
-  if (trimmed.contains("cashier.cc-pay.cn")) {
-    // 若包含 backUrl= 参数，仍优先取 backUrl（登录回跳形态）；否则整体就是收银台地址
-    val back = extractBackUrlParam(trimmed)
-    if (back != null && back.contains("cashier.cc-pay.cn")) return back
-    if (
-        trimmed.startsWith("https://cashier.cc-pay.cn") ||
-            trimmed.startsWith("http://cashier.cc-pay.cn")
-    ) {
-      return trimmed
+  // 形态 3：整体百分号编码（scheme 也被编码），先完整解码再识别
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && trimmed.contains('%')) {
+    val decoded = percentDecode(trimmed)
+    if (decoded.startsWith("http://") || decoded.startsWith("https://")) {
+      trimmed = decoded
     }
   }
 
-  // 形态 1：pass.cc-pay.cn/login?backUrl=...
-  val back = extractBackUrlParam(trimmed)
-  return back?.takeIf { it.contains("cashier.cc-pay.cn") }
+  val cashier =
+      when {
+        // 形态 2/4：直接就是收银台地址（可能含未解码的 %3F/%3D/%26，最后统一处理）
+        trimmed.contains("cashier.cc-pay.cn") -> {
+          val back = extractBackUrlParam(trimmed)
+          when {
+            back?.contains("cashier.cc-pay.cn") == true -> back
+            trimmed.startsWith("https://cashier.cc-pay.cn") ||
+                trimmed.startsWith("http://cashier.cc-pay.cn") -> trimmed
+            else -> null
+          }
+        }
+        // 形态 1：pass.cc-pay.cn/login?backUrl=<encoded cashier>
+        else -> extractBackUrlParam(trimmed)?.takeIf { it.contains("cashier.cc-pay.cn") }
+      } ?: return null
+
+  // 最终结果做一次完整百分号解码，抹掉 %3F/%3D/%26 等残留，
+  // 避免 "cashier%3Fid%3Dxxx" 这类坏地址进 WebView 导致支付页加载失败、无法唤起支付 App。
+  val decoded = percentDecode(cashier)
+  return decoded.takeIf { it.startsWith("http://") || it.startsWith("https://") }
 }
 
-/** 从 URL 的 backUrl 查询参数解码出原始值（支持一次编码）。 */
+/** 从 URL 的 backUrl 查询参数解码出原始值（兼容一次/两次编码）。 */
 private fun extractBackUrlParam(url: String): String? {
   val markers = listOf("backUrl=", "backurl=", "back_url=")
   for (marker in markers) {
@@ -102,8 +116,9 @@ private fun extractBackUrlParam(url: String): String? {
     while (end < url.length && url[end] != '&' && url[end] != '#') end++
     val raw = url.substring(valueStart, end)
     if (raw.isBlank()) continue
-    // backUrl 是 URL 编码的（如 %3A%2F%2F -> ://），做一次十六进制解码
-    val decoded = percentDecode(raw)
+    // backUrl 值是 URL 编码的（如 %3A%2F%2F -> ://）。个别服务端整体编码后再内嵌，解码两轮兼容。
+    var decoded = raw
+    repeat(2) { decoded = percentDecode(decoded) }
     return when {
       decoded.contains("http://") || decoded.contains("https://") -> decoded
       raw.contains("http://") || raw.contains("https://") -> raw

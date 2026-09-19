@@ -164,7 +164,12 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
       )
     }
     val payUrl = response.bodyAsText().trim().trim('"', '\'')
-    if (payUrl.startsWith("http://") || payUrl.startsWith("https://")) {
+    // 兼容整体百分号编码形态（%3A%2F%2F 即 ://），由 CcpaySession.extractCashierUrl 统一解码
+    if (
+        payUrl.startsWith("http://") ||
+            payUrl.startsWith("https://") ||
+            payUrl.contains("%3A%2F%2F")
+    ) {
       ElectricityPayResult.Success(payUrl)
     } else {
       ElectricityPayResult.Failure(payUrl.ifBlank { "下单失败，请稍后重试" })
