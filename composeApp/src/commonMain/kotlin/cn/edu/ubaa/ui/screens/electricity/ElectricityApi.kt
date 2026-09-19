@@ -1,5 +1,6 @@
 package cn.edu.ubaa.ui.screens.electricity
 
+import cn.edu.ubaa.api.network.platformLog
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
@@ -147,20 +148,42 @@ class ElectricityApi(private val engine: HttpClientEngine? = null) {
    * @param writePower 下发电量（整数度，必须 >= 1）。
    */
   suspend fun submitPay(meterId: Int, writePower: Int): ElectricityPayResult = withNetworkHint {
-    val response =
-        client.submitForm(
-            url = "$BASE_URL/BuaaPay/Pay",
-            formParameters =
-                Parameters.build {
-                  append("id", meterId.toString())
-                  append("writePower", writePower.toString())
-                },
-        ) {
-          header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
+    val form =
+        Parameters.build {
+          append("id", meterId.toString())
+          append("writePower", writePower.toString())
         }
+    suspend fun doPost(url: String): io.ktor.client.statement.HttpResponse =
+        client.submitForm(url = url, formParameters = form) {
+          header(HttpHeaders.Accept, "application/json, text/javascript, */*; q=0.01")
+          // 模拟网页内 jQuery.ajax 的 Referer：网关/WAF 可能据此判定请求合法性（否则 302）
+          header("Referer", "$BASE_URL/BuaaPay")
+        }
+
+    var response = doPost("$BASE_URL/BuaaPay/Pay")
+    // 网关会把 http POST 302 升级到 https（实测 Location=https://shsd.buaa.edu.cn/BuaaPay/Pay），
+    // 跟随指向同一支付接口的重定向并重新 POST，最多 3 跳避免死循环。
+    var hops = 0
+    while (response.status.value in 300..399 && hops < 3) {
+      val location = response.headers[HttpHeaders.Location]
+      if (location.isNullOrBlank()) break
+      val target =
+          if (location.startsWith("http://") || location.startsWith("https://")) location
+          else "https://shsd.buaa.edu.cn$location"
+      if (!target.contains("/BuaaPay/Pay")) break
+      platformLog("ELECPAY", "submitPay 跟随重定向 ${response.status.value} -> $target")
+      response = doPost(target)
+      hops++
+    }
     if (response.status != HttpStatusCode.OK) {
+      val location = response.headers[HttpHeaders.Location]
+      val body = response.bodyAsText()
+      platformLog(
+          "ELECPAY",
+          "submitPay 非200 status=${response.status.value} location=$location body=${body.take(120)}",
+      )
       return@withNetworkHint ElectricityPayResult.Failure(
-          "下单失败（${response.status.value}）：${response.bodyAsText().take(80)}"
+          "下单失败（${response.status.value}）：${body.take(80)}"
       )
     }
     val payUrl = response.bodyAsText().trim().trim('"', '\'')

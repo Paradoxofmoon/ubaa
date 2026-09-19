@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cn.edu.ubaa.api.local.ensureCcpaySession
 import cn.edu.ubaa.api.local.extractCashierUrl
+import cn.edu.ubaa.api.network.DebugFileSink
+import cn.edu.ubaa.api.network.platformLog
 import cn.edu.ubaa.api.storage.MeterNumberStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -274,6 +276,14 @@ class ElectricityViewModel(
               is ElectricityPayResult.Success -> {
                 // 3. 解析真正的收银台地址
                 val cashierUrl = extractCashierUrl(result.payUrl) ?: result.payUrl
+                platformLog(
+                    "ELECPAY",
+                    "submitPay raw=${result.payUrl} resolved=$cashierUrl channel=${payWay?.channel ?: "wx"}",
+                )
+                DebugFileSink.write(
+                    "elec_pay_url.txt",
+                    "raw=${result.payUrl}\nresolved=$cashierUrl\nchannel=${payWay?.channel ?: "wx"}",
+                )
                 cashierUrl to (payWay?.channel ?: "wx")
               }
               is ElectricityPayResult.Failure -> throw ElectricityException(result.message)
@@ -330,7 +340,16 @@ class ElectricityViewModel(
       runCatching {
             // 建立 cc-pay 会话 + 解析收银台地址
             ensureCcpaySession()
-            extractCashierUrl(url) ?: url
+            val cashierUrl = extractCashierUrl(url) ?: url
+            platformLog(
+                "ELECPAY",
+                "continuePay raw=$url resolved=$cashierUrl channel=${payWay?.channel ?: "wx"}",
+            )
+            DebugFileSink.write(
+                "elec_pay_url.txt",
+                "raw=$url\nresolved=$cashierUrl\nchannel=${payWay?.channel ?: "wx"}",
+            )
+            cashierUrl
           }
           .onSuccess { cashierUrl ->
             _state.value =

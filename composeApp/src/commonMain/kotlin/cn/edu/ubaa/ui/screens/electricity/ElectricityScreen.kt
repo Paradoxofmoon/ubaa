@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import cn.edu.ubaa.api.network.DebugFileSink
+import cn.edu.ubaa.api.network.platformLog
 import cn.edu.ubaa.ui.common.util.formatMoney
 import cn.edu.ubaa.ui.component.SchemeTriggerWebView
 import cn.edu.ubaa.ui.icons.LocalAppIcons
@@ -49,12 +51,20 @@ fun ElectricityScreen(
       remember(cashierUrl) {
         mutableStateOf<String?>(if (cashierUrl != null) "正在拉起支付..." else null)
       }
+  // 诊断序列落盘（/data/user/0/cn.edu.ubaa/cache/ubaa_debug/elec_pay_status.txt），
+  // 页面加载/自动点击/唤起 scheme 全程可查，方便 adb pull 定位支付失败。
+  val payLog = remember { StringBuilder() }
   // 与校园卡一致的隐藏 WebView：加载真实收银台页并注入 JS 自动点支付渠道，唤起支付 App。
   if (cashierUrl != null) {
     SchemeTriggerWebView(
         cashierUrl = cashierUrl,
         channel = channel ?: "wx",
-        onDiagnose = { msg -> payStatus = msg },
+        onDiagnose = { msg ->
+          payStatus = msg
+          platformLog("ELECPAY", msg)
+          if (payLog.length < 4000) payLog.append(msg).append('\n')
+          DebugFileSink.write("elec_pay_status.txt", payLog.toString())
+        },
         onConsumed = onClearPendingPay,
     )
   }

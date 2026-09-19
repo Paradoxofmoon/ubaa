@@ -33,9 +33,14 @@ fun SchemeTriggerWebView(
       modifier = modifier,
       cookies = buildCcpayCookieHeader().split("; ").filter { it.trim().isNotEmpty() },
       injectJsOnLoad = js,
+      onSchemeUrl = { target ->
+        onDiagnose("唤起支付scheme: ${target.take(160)}")
+        false
+      },
       onPageError = { msg ->
-        if (msg.contains("PAYDEBUG")) {
-          onDiagnose(msg.take(120))
+        // 只上报关键诊断：PAYDEBUG 自动点击结果、页面开始加载(含实际 URL)、主框架加载失败
+        if (msg.contains("PAYDEBUG") || msg.contains("页面开始加载") || msg.contains("页面加载失败")) {
+          onDiagnose(msg.take(160))
         }
       },
   )
